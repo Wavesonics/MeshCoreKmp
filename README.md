@@ -1,5 +1,7 @@
 # MeshCoreKmp
 
+[![build-and-test](https://github.com/Wavesonics/MeshCoreKmp/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/Wavesonics/MeshCoreKmp/actions/workflows/build-and-test.yml)
+
 Kotlin Multiplatform Library
 
 ### Run Sample App
