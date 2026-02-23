@@ -11,3 +11,9 @@ data object ScanRoute : Route
 
 @Serializable
 data class ConnectedRoute(val deviceId: String) : Route
+
+@Serializable
+data object ChannelsRoute : Route
+
+@Serializable
+data class ChannelRoute(val channelIndex: Int, val channelName: String) : Route

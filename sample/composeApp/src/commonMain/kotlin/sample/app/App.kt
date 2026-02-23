@@ -15,9 +15,13 @@ import com.darkrockstudios.libs.meshcorekmp.DeviceConnection
 import com.darkrockstudios.libs.meshcorekmp.DeviceScanner
 import com.darkrockstudios.libs.meshcorekmp.ble.BleAdapter
 import kotlinx.coroutines.launch
+import sample.app.navigation.ChannelRoute
+import sample.app.navigation.ChannelsRoute
 import sample.app.navigation.ConnectedRoute
 import sample.app.navigation.Route
 import sample.app.navigation.ScanRoute
+import sample.app.screen.ChannelScreen
+import sample.app.screen.ChannelsScreen
 import sample.app.screen.ConnectedScreen
 import sample.app.screen.ScanScreen
 
@@ -59,7 +63,31 @@ fun App(bleAdapter: BleAdapter) {
 								}
 								backStack.clear()
 								backStack.add(ScanRoute)
+							},
+							onChannelsClick = {
+								backStack.add(ChannelsRoute)
 							}
+						)
+					}
+				}
+				entry<ChannelsRoute> {
+					activeConnection?.let { conn ->
+						ChannelsScreen(
+							connection = conn,
+							onBack = { backStack.removeLastOrNull() },
+							onChannelSelected = { channel ->
+								backStack.add(ChannelRoute(channel.index, channel.name))
+							}
+						)
+					}
+				}
+				entry<ChannelRoute> { route ->
+					activeConnection?.let { conn ->
+						ChannelScreen(
+							channelIndex = route.channelIndex,
+							channelName = route.channelName,
+							connection = conn,
+							onBack = { backStack.removeLastOrNull() },
 						)
 					}
 				}

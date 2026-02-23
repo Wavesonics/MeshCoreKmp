@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 fun ConnectedScreen(
 	connection: DeviceConnection,
 	onDisconnected: () -> Unit,
+	onChannelsClick: () -> Unit,
 ) {
 	val scope = rememberCoroutineScope()
 	val connectionState by connection.connectionState.collectAsState()
@@ -108,6 +109,14 @@ fun ConnectedScreen(
 				modifier = Modifier.fillMaxWidth(),
 			) {
 				Text(if (isFetchingBattery) "Fetching..." else "Get Battery")
+			}
+
+			// Channels Button
+			Button(
+				onClick = onChannelsClick,
+				modifier = Modifier.fillMaxWidth(),
+			) {
+				Text("Channels")
 			}
 
 			if (batteryError != null) {

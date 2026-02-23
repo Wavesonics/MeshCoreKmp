@@ -17,4 +17,7 @@ sealed class MeshCoreException(message: String, cause: Throwable? = null) : Exce
 
 	class NotConnected(message: String = "Not connected to device") :
 		MeshCoreException(message)
+
+	class UnexpectedResponse(message: String) :
+		MeshCoreException(message)
 }

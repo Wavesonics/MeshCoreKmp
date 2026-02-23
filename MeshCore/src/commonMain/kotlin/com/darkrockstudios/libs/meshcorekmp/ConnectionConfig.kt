@@ -7,7 +7,7 @@ import kotlin.time.Duration.Companion.seconds
 @Serializable
 data class ConnectionConfig(
 	val appName: String = "mccli",
-	val commandTimeoutSeconds: Long = 5,
+	val commandTimeoutSeconds: Long = 10,
 	val requestedMtu: Int = 512,
 	val autoSyncTime: Boolean = true,
 	val autoFetchContacts: Boolean = true,

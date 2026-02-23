@@ -149,15 +149,27 @@ class DeviceConnection internal constructor(
 
 	suspend fun sendChannelMessage(channelIndex: Int, text: String): MessageSentConfirmation {
 		val timestamp = currentTimeSeconds()
-		val resp = commandQueue.execute<Response.MessageSent>(
+		val resp = commandQueue.execute<Response>(
 			CommandSerializer.sendChannelMessage(channelIndex, text, timestamp),
 			config.commandTimeout,
 		)
-		return MessageSentConfirmation(
-			messageType = resp.messageType,
-			expectedAck = resp.expectedAck,
-			suggestedTimeoutSeconds = resp.suggestedTimeoutSeconds,
-		)
+		return when (resp) {
+			is Response.MessageSent -> MessageSentConfirmation(
+				messageType = resp.messageType,
+				expectedAck = resp.expectedAck,
+				suggestedTimeoutSeconds = resp.suggestedTimeoutSeconds,
+			)
+
+			is Response.Ok -> MessageSentConfirmation(
+				messageType = 0,
+				expectedAck = "",
+				suggestedTimeoutSeconds = 0,
+			)
+
+			else -> throw MeshCoreException.UnexpectedResponse(
+				"Expected MessageSent or Ok, got ${resp::class.simpleName}"
+			)
+		}
 	}
 
 	suspend fun pollNextMessage(): ReceivedMessage? {
