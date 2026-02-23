@@ -52,12 +52,12 @@ android {
 //https://www.jetbrains.com/help/kotlin-multiplatform-dev/multiplatform-publish-libraries.html
 mavenPublishing {
     publishToMavenCentral()
-    coordinates("com.darkrockstudios.libs.meshcorekmp", "MeshCore", "1.0.0")
+    coordinates("com.darkrockstudios.libs.meshcorekmp", "MeshCore", providers.gradleProperty("library.version").get())
 
     pom {
         name = "MeshCoreKmp"
-        description = "Kotlin Multiplatform library"
-        url = "github url" //todo
+        description = "Kotlin Multiplatform MeshCore companion library"
+        url = "https://github.com/Wavesonics/MeshCoreKmp"
 
         licenses {
             license {
@@ -68,15 +68,15 @@ mavenPublishing {
 
         developers {
             developer {
-                id = "" //todo
-                name = "" //todo
-                email = "" //todo
+                name.set("Adam Brown")
+                id.set("Wavesonics")
+                email.set("adamwbrown@gmail.com")
             }
         }
 
         scm {
-            url = "github url" //todo
+            url = "https://github.com/Wavesonics/MeshCoreKmp"
         }
     }
-    if (project.hasProperty("signing.keyId")) signAllPublications()
+    if (project.hasProperty("signing.keyId") || project.hasProperty("signingInMemoryKey")) signAllPublications()
 }
