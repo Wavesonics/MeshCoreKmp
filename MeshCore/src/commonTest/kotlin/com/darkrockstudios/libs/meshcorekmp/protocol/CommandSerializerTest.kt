@@ -169,4 +169,53 @@ class CommandSerializerTest {
 			CommandSerializer.getStats(3)
 		}
 	}
+
+	@Test
+	fun sendRawData_emptyPath() {
+		val payload = byteArrayOf(0x01, 0x02, 0x03)
+		val result = CommandSerializer.sendRawData(ByteArray(0), payload)
+		assertEquals(5, result.size) // 1 cmd + 1 path_len + 0 path + 3 payload
+		assertEquals(0x19.toByte(), result[0])
+		assertEquals(0x00.toByte(), result[1]) // path_len = 0
+		assertEquals(0x01.toByte(), result[2])
+		assertEquals(0x02.toByte(), result[3])
+		assertEquals(0x03.toByte(), result[4])
+	}
+
+	@Test
+	fun sendRawData_withPath() {
+		val path = byteArrayOf(0xAA.toByte(), 0xBB.toByte())
+		val payload = byteArrayOf(0x01, 0x02)
+		val result = CommandSerializer.sendRawData(path, payload)
+		assertEquals(6, result.size) // 1 cmd + 1 path_len + 2 path + 2 payload
+		assertEquals(0x19.toByte(), result[0])
+		assertEquals(0x02.toByte(), result[1]) // path_len = 2
+		assertEquals(0xAA.toByte(), result[2])
+		assertEquals(0xBB.toByte(), result[3])
+		assertEquals(0x01.toByte(), result[4])
+		assertEquals(0x02.toByte(), result[5])
+	}
+
+	@Test
+	fun sendBinaryRequest_correctLayout() {
+		val publicKey = ByteArray(32) { it.toByte() }
+		val requestData = byteArrayOf(0xFF.toByte(), 0xFE.toByte())
+		val result = CommandSerializer.sendBinaryRequest(publicKey, requestData)
+		assertEquals(35, result.size) // 1 cmd + 32 key + 2 data
+		assertEquals(0x32.toByte(), result[0])
+		// Verify public key starts at offset 1
+		for (i in 0 until 32) {
+			assertEquals(i.toByte(), result[1 + i])
+		}
+		// Verify request data starts at offset 33
+		assertEquals(0xFF.toByte(), result[33])
+		assertEquals(0xFE.toByte(), result[34])
+	}
+
+	@Test
+	fun sendBinaryRequest_invalidKeySize() {
+		assertFailsWith<IllegalArgumentException> {
+			CommandSerializer.sendBinaryRequest(ByteArray(16), byteArrayOf(0x01))
+		}
+	}
 }

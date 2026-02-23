@@ -51,6 +51,8 @@ class CommandQueue(
 		is Response.MessagesWaiting -> true
 		is Response.Ack -> true
 		is Response.AdvertisementReceived -> true
+		is Response.RawDataReceived -> true
+		is Response.BinaryResponse -> true
 		is Response.LogData -> true
 		else -> false
 	}

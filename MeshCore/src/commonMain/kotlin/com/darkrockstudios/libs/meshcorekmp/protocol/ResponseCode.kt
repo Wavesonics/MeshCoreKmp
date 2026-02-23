@@ -21,5 +21,7 @@ object ResponseCode {
 	const val PACKET_ADVERTISEMENT = 0x80
 	const val PACKET_ACK = 0x82
 	const val PACKET_MESSAGES_WAITING = 0x83
+	const val PUSH_CODE_RAW_DATA = 0x84
 	const val PACKET_LOG_DATA = 0x88
+	const val PUSH_CODE_BINARY_RESPONSE = 0x8C
 }

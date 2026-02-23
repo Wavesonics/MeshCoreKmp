@@ -143,4 +143,97 @@ class CommandQueueTest {
 
 		collectJob.cancel()
 	}
+
+	@Test
+	fun pushEvents_rawDataRoutedAsPush() = runTest(UnconfinedTestDispatcher()) {
+		val bleConnection = FakeBleConnection()
+		val queue = CommandQueue(
+			connection = bleConnection,
+			scope = backgroundScope,
+		)
+
+		val collected = mutableListOf<Response>()
+		val collectJob = backgroundScope.launch {
+			queue.pushEvents.collect { collected.add(it) }
+		}
+
+		// Simulate a raw data push event (no command pending)
+		bleConnection.simulateResponse(byteArrayOf(
+			0x84.toByte(), 40, (-80).toByte(), 0xFF.toByte(), 0x01, 0x02,
+		))
+
+		assertEquals(1, collected.size, "Expected 1 push event, got ${collected.size}")
+		assertIs<Response.RawDataReceived>(collected[0])
+
+		collectJob.cancel()
+	}
+
+	@Test
+	fun pushEvents_binaryResponseRoutedAsPush() = runTest(UnconfinedTestDispatcher()) {
+		val bleConnection = FakeBleConnection()
+		val queue = CommandQueue(
+			connection = bleConnection,
+			scope = backgroundScope,
+		)
+
+		val collected = mutableListOf<Response>()
+		val collectJob = backgroundScope.launch {
+			queue.pushEvents.collect { collected.add(it) }
+		}
+
+		// Simulate a binary response push event
+		val data = ByteArray(10)
+		data[0] = 0x8C.toByte()
+		data[1] = 0x00
+		// tag = 99
+		data[2] = 0x63; data[3] = 0x00; data[4] = 0x00; data[5] = 0x00
+		data[6] = 0xAA.toByte(); data[7] = 0xBB.toByte()
+		data[8] = 0xCC.toByte(); data[9] = 0xDD.toByte()
+		bleConnection.simulateResponse(data)
+
+		assertEquals(1, collected.size, "Expected 1 push event, got ${collected.size}")
+		assertIs<Response.BinaryResponse>(collected[0])
+		assertEquals(99L, (collected[0] as Response.BinaryResponse).tag)
+
+		collectJob.cancel()
+	}
+
+	@Test
+	fun pushEvents_rawDataRoutedDuringCommand() = runTest {
+		val bleConnection = FakeBleConnection()
+		val queue = CommandQueue(
+			connection = bleConnection,
+			scope = backgroundScope,
+		)
+
+		val pushEvents = mutableListOf<Response>()
+		val collectJob = backgroundScope.launch {
+			queue.pushEvents.collect { pushEvents.add(it) }
+		}
+		testScheduler.advanceUntilIdle()
+
+		launch {
+			while (bleConnection.writtenData.isEmpty()) {
+				kotlinx.coroutines.yield()
+			}
+			// Send raw data push while a command is pending
+			bleConnection.simulateResponse(byteArrayOf(
+				0x84.toByte(), 0x00, 0x00, 0xFF.toByte(), 0x01,
+			))
+			kotlinx.coroutines.yield()
+			// Then send the actual command response
+			bleConnection.simulateResponse(byteArrayOf(0x00))
+		}
+
+		val result = queue.execute<Response.Ok>(
+			command = CommandSerializer.getBattery(),
+		)
+		testScheduler.advanceUntilIdle()
+
+		assertEquals(1, pushEvents.size)
+		assertIs<Response.RawDataReceived>(pushEvents[0])
+		assertIs<Response.Ok>(result)
+
+		collectJob.cancel()
+	}
 }

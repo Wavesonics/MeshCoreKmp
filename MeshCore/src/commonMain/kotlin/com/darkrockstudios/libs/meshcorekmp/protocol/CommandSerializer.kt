@@ -57,6 +57,24 @@ object CommandSerializer {
 		return byteArrayOf(CommandCode.GET_STATS.toByte(), subType.toByte())
 	}
 
+	fun sendRawData(path: ByteArray, payload: ByteArray): ByteArray {
+		val buffer = ByteArray(1 + 1 + path.size + payload.size)
+		buffer[0] = CommandCode.SEND_RAW_DATA.toByte()
+		buffer[1] = path.size.toByte()
+		path.copyInto(buffer, 2)
+		payload.copyInto(buffer, 2 + path.size)
+		return buffer
+	}
+
+	fun sendBinaryRequest(publicKey: ByteArray, requestData: ByteArray): ByteArray {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
+		val buffer = ByteArray(1 + 32 + requestData.size)
+		buffer[0] = CommandCode.SEND_BINARY_REQ.toByte()
+		publicKey.copyInto(buffer, 1)
+		requestData.copyInto(buffer, 33)
+		return buffer
+	}
+
 	internal fun putUInt32LE(buffer: ByteArray, offset: Int, value: Long) {
 		buffer[offset] = (value and 0xFF).toByte()
 		buffer[offset + 1] = ((value shr 8) and 0xFF).toByte()

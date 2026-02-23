@@ -40,6 +40,14 @@ class DeviceConnection internal constructor(
 		.filterIsInstance<Response.AdvertisementReceived>()
 		.map { it.rawData }
 
+	val incomingRawData: Flow<ReceivedRawData> = commandQueue.pushEvents
+		.filterIsInstance<Response.RawDataReceived>()
+		.map { ReceivedRawData(snr = it.snr, rssi = it.rssi, payload = it.payload) }
+
+	val incomingBinaryResponses: Flow<ReceivedBinaryResponse> = commandQueue.pushEvents
+		.filterIsInstance<Response.BinaryResponse>()
+		.map { ReceivedBinaryResponse(tag = it.tag, responseData = it.responseData) }
+
 	internal suspend fun initialize() {
 		// 1. APP_START
 		commandQueue.execute<Response.Ok>(
@@ -190,6 +198,27 @@ class DeviceConnection internal constructor(
 			val msg = pollNextMessage() ?: break
 			_incomingMessages.emit(msg)
 		}
+	}
+
+	// --- Raw Data / Binary ---
+
+	suspend fun sendRawData(path: ByteArray = ByteArray(0), payload: ByteArray) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.sendRawData(path, payload),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun sendBinaryRequest(publicKey: ByteArray, requestData: ByteArray): MessageSentConfirmation {
+		val resp = commandQueue.execute<Response.MessageSent>(
+			CommandSerializer.sendBinaryRequest(publicKey, requestData),
+			config.commandTimeout,
+		)
+		return MessageSentConfirmation(
+			messageType = resp.messageType,
+			expectedAck = resp.expectedAck,
+			suggestedTimeoutSeconds = resp.suggestedTimeoutSeconds,
+		)
 	}
 
 	// --- Contacts ---

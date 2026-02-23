@@ -104,6 +104,39 @@ connection.incomingMessages.collect { message ->
 }                                                                                                                                                                                                                                                                                                                           
 ```                                                                                                                                                                                                                                                                                                                         
 
+### Raw Binary Data
+
+Send and receive arbitrary binary payloads over the mesh, useful for custom application protocols.
+
+```kotlin
+// Send raw data (broadcast/flood) with an optional path
+connection.sendRawData(payload = byteArrayOf(0x01, 0x02, 0x03))
+
+// Listen for incoming raw data from the mesh
+connection.incomingRawData.collect { rawData ->
+    println("Raw data received (SNR: ${rawData.snr}, RSSI: ${rawData.rssi})")
+    println("Payload: ${rawData.payload.size} bytes")
+}
+```
+
+### Binary Requests
+
+Send binary data to a specific contact by public key, with correlated responses.
+
+```kotlin
+// Send a binary request to a specific contact
+val confirmation = connection.sendBinaryRequest(
+    publicKey = contactPublicKey, // 32-byte public key
+    requestData = myRequestPayload,
+)
+println("Binary request sent, tag: ${confirmation.expectedAck}")
+
+// Listen for binary responses (correlated by tag)
+connection.incomingBinaryResponses.collect { response ->
+    println("Binary response for tag=${response.tag}: ${response.responseData.size} bytes")
+}
+```
+
 ### Device Info and Stats
 
 ```kotlin                                                                                                                                                                                                                                                                                                                   

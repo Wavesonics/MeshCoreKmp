@@ -414,6 +414,97 @@ class ResponseParserTest {
 	}
 
 	@Test
+	fun parse_rawDataReceived() {
+		// [0x84][snr*4: i8][rssi: i8][0xFF][payload...]
+		val data = byteArrayOf(
+			0x84.toByte(),
+			40,                  // SNR raw = 40, actual = 10.0 dB
+			(-80).toByte(),      // RSSI = -80
+			0xFF.toByte(),       // reserved
+			0x01, 0x02, 0x03,    // payload
+		)
+		val result = ResponseParser.parse(data)
+		assertIs<Response.RawDataReceived>(result)
+		assertEquals(10.0f, result.snr)
+		assertEquals(-80, result.rssi)
+		assertEquals(3, result.payload.size)
+		assertEquals(0x01.toByte(), result.payload[0])
+		assertEquals(0x02.toByte(), result.payload[1])
+		assertEquals(0x03.toByte(), result.payload[2])
+	}
+
+	@Test
+	fun parse_rawDataReceived_negativeSnr() {
+		val data = byteArrayOf(
+			0x84.toByte(),
+			(-20).toByte(),      // SNR raw = -20, actual = -5.0 dB
+			(-90).toByte(),      // RSSI = -90
+			0xFF.toByte(),       // reserved
+			0xAA.toByte(),       // payload
+		)
+		val result = ResponseParser.parse(data)
+		assertIs<Response.RawDataReceived>(result)
+		assertEquals(-5.0f, result.snr)
+		assertEquals(-90, result.rssi)
+		assertEquals(1, result.payload.size)
+	}
+
+	@Test
+	fun parse_rawDataReceived_tooShort() {
+		val data = byteArrayOf(0x84.toByte(), 0x00, 0x00)
+		assertNull(ResponseParser.parse(data))
+	}
+
+	@Test
+	fun parse_rawDataReceived_emptyPayload() {
+		val data = byteArrayOf(0x84.toByte(), 0x00, 0x00, 0xFF.toByte())
+		val result = ResponseParser.parse(data)
+		assertIs<Response.RawDataReceived>(result)
+		assertEquals(0, result.payload.size)
+	}
+
+	@Test
+	fun parse_binaryResponse() {
+		// [0x8C][0x00][tag: u32 LE][response_data...]
+		val data = ByteArray(10)
+		data[0] = 0x8C.toByte()
+		data[1] = 0x00 // reserved
+		// tag = 12345 (0x00003039) in LE
+		putUInt32LE(data, 2, 12345)
+		// response data
+		data[6] = 0xDE.toByte()
+		data[7] = 0xAD.toByte()
+		data[8] = 0xBE.toByte()
+		data[9] = 0xEF.toByte()
+		val result = ResponseParser.parse(data)
+		assertIs<Response.BinaryResponse>(result)
+		assertEquals(12345L, result.tag)
+		assertEquals(4, result.responseData.size)
+		assertEquals(0xDE.toByte(), result.responseData[0])
+		assertEquals(0xAD.toByte(), result.responseData[1])
+		assertEquals(0xBE.toByte(), result.responseData[2])
+		assertEquals(0xEF.toByte(), result.responseData[3])
+	}
+
+	@Test
+	fun parse_binaryResponse_tooShort() {
+		val data = byteArrayOf(0x8C.toByte(), 0x00, 0x01, 0x00, 0x00)
+		assertNull(ResponseParser.parse(data))
+	}
+
+	@Test
+	fun parse_binaryResponse_emptyData() {
+		val data = ByteArray(6)
+		data[0] = 0x8C.toByte()
+		data[1] = 0x00
+		putUInt32LE(data, 2, 42)
+		val result = ResponseParser.parse(data)
+		assertIs<Response.BinaryResponse>(result)
+		assertEquals(42L, result.tag)
+		assertEquals(0, result.responseData.size)
+	}
+
+	@Test
 	fun parse_logData() {
 		val data = byteArrayOf(0x88.toByte(), 0x01, 0x02, 0x03)
 		val result = ResponseParser.parse(data)

@@ -26,7 +26,9 @@ object ResponseParser {
 			ResponseCode.PACKET_ADVERTISEMENT -> parseAdvertisement(data)
 			ResponseCode.PACKET_CURRENT_TIME -> parseCurrentTime(data)
 			ResponseCode.RESP_CODE_STATS -> parseStats(data)
+			ResponseCode.PUSH_CODE_RAW_DATA -> parseRawData(data)
 			ResponseCode.PACKET_LOG_DATA -> Response.LogData(data.copyOfRange(1, data.size))
+			ResponseCode.PUSH_CODE_BINARY_RESPONSE -> parseBinaryResponse(data)
 			else -> null
 		}
 	}
@@ -297,6 +299,23 @@ object ResponseParser {
 			directRx = getUInt32LE(data, 22),
 			recvErrors = if (data.size >= 30) getUInt32LE(data, 26) else null,
 		)
+	}
+
+	private fun parseRawData(data: ByteArray): Response.RawDataReceived? {
+		if (data.size < 4) return null
+		val snr = data[1].toInt() / 4.0f // signed byte, scaled by 4
+		val rssi = data[2].toInt() // signed byte
+		// data[3] is reserved (0xFF)
+		val payload = if (data.size > 4) data.copyOfRange(4, data.size) else ByteArray(0)
+		return Response.RawDataReceived(snr = snr, rssi = rssi, payload = payload)
+	}
+
+	private fun parseBinaryResponse(data: ByteArray): Response.BinaryResponse? {
+		if (data.size < 6) return null
+		// data[1] is reserved (0x00)
+		val tag = getUInt32LE(data, 2)
+		val responseData = if (data.size > 6) data.copyOfRange(6, data.size) else ByteArray(0)
+		return Response.BinaryResponse(tag = tag, responseData = responseData)
 	}
 
 	// --- Byte utilities ---
