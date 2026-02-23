@@ -32,12 +32,14 @@ import androidx.compose.ui.unit.dp
 import com.darkrockstudios.libs.meshcorekmp.DeviceConnection
 import com.darkrockstudios.libs.meshcorekmp.DeviceScanner
 import com.darkrockstudios.libs.meshcorekmp.ble.DiscoveredDevice
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScanScreen(
 	scanner: DeviceScanner,
+	connectionScope: CoroutineScope,
 	onDeviceConnected: (DeviceConnection) -> Unit,
 ) {
 	val scope = rememberCoroutineScope()
@@ -111,7 +113,7 @@ fun ScanScreen(
 							errorMessage = null
 							scope.launch {
 								try {
-									val connection = scanner.connect(device, scope)
+									val connection = scanner.connect(device, connectionScope)
 									onDeviceConnected(connection)
 								} catch (e: Exception) {
 									errorMessage = "Connection failed: ${e.message}"

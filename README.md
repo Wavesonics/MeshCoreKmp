@@ -13,10 +13,16 @@ Kotlin Multiplatform Library
 
 ### Setup
 
-Create a `DeviceScanner` with your platform-specific `BleAdapter` implementation:
+Create a `BlueFalconBleAdapter` with a platform-specific `BlueFalcon` instance, then pass it to `DeviceScanner`:
 
-```kotlin                                                                                                                                                                                                                                                                                                                          
-val scanner = DeviceScanner(bleAdapter)                                                                                                                                                                                                                                                                                            
+```kotlin
+// Android
+val blueFalcon = BlueFalcon(context = application)
+val scanner = DeviceScanner(BlueFalconBleAdapter(blueFalcon))
+
+// iOS
+val blueFalcon = BlueFalcon(context = UIApplication.sharedApplication)
+val scanner = DeviceScanner(BlueFalconBleAdapter(blueFalcon))
 ```                                                                                                                                                                                                                                                                                                                         
 
 ### Scanning for Devices

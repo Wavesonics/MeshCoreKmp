@@ -38,6 +38,7 @@ fun App(bleAdapter: BleAdapter) {
 				entry<ScanRoute> {
 					ScanScreen(
 						scanner = scanner,
+						connectionScope = scope,
 						onDeviceConnected = { conn ->
 							activeConnection = conn
 							backStack.add(ConnectedRoute(conn.deviceIdentifier))

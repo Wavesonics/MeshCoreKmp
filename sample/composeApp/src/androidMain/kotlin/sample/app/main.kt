@@ -9,10 +9,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import com.darkrockstudios.libs.meshcorekmp.ble.AndroidBleAdapter
+import com.darkrockstudios.libs.meshcorekmp.ble.BlueFalconBleAdapter
+import dev.bluefalcon.BlueFalcon
+import io.github.aakira.napier.DebugAntilog
+import io.github.aakira.napier.Napier
 
 class AppActivity : ComponentActivity() {
-	private lateinit var bleAdapter: AndroidBleAdapter
+	private lateinit var bleAdapter: BlueFalconBleAdapter
 
 	private val permissionLauncher = registerForActivityResult(
 		ActivityResultContracts.RequestMultiplePermissions()
@@ -28,7 +31,9 @@ class AppActivity : ComponentActivity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		enableEdgeToEdge()
-		bleAdapter = AndroidBleAdapter(applicationContext)
+		Napier.base(DebugAntilog())
+		val blueFalcon = BlueFalcon(context = application)
+		bleAdapter = BlueFalconBleAdapter(blueFalcon)
 
 		if (hasRequiredPermissions()) {
 			showApp()
@@ -53,6 +58,7 @@ class AppActivity : ComponentActivity() {
 			listOf(
 				Manifest.permission.BLUETOOTH_SCAN,
 				Manifest.permission.BLUETOOTH_CONNECT,
+				Manifest.permission.ACCESS_FINE_LOCATION,
 			)
 		} else {
 			listOf(

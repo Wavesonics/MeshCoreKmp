@@ -4,6 +4,7 @@ import com.darkrockstudios.libs.meshcorekmp.ble.BleAdapter
 import com.darkrockstudios.libs.meshcorekmp.ble.DiscoveredDevice
 import com.darkrockstudios.libs.meshcorekmp.ble.ScanFilter
 import com.darkrockstudios.libs.meshcorekmp.protocol.CommandQueue
+import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,9 +25,12 @@ class DeviceScanner(
 	fun startScan(filter: ScanFilter = ScanFilter(), scope: CoroutineScope) {
 		stopScan()
 		_discoveredDevices.value = emptyList()
+		Napier.d(tag = TAG) { "startScan() called" }
 		val scanFlow = bleAdapter.scan(filter)
 		scanJob = scope.launch {
+			Napier.d(tag = TAG) { "Collecting scan flow" }
 			scanFlow.collect { device ->
+				Napier.d(tag = TAG) { "Received device '${device.name}' (${device.identifier})" }
 				val current = _discoveredDevices.value
 				val existingIndex = current.indexOfFirst { it.identifier == device.identifier }
 				_discoveredDevices.value = if (existingIndex >= 0) {
@@ -34,6 +38,7 @@ class DeviceScanner(
 				} else {
 					current + device
 				}
+				Napier.d(tag = TAG) { "Total devices = ${_discoveredDevices.value.size}" }
 			}
 		}
 	}
@@ -69,5 +74,9 @@ class DeviceScanner(
 
 		connection.initialize()
 		return connection
+	}
+
+	companion object {
+		private const val TAG = "MeshCoreBLE"
 	}
 }
