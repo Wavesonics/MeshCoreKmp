@@ -1,0 +1,144 @@
+package com.darkrockstudios.libs.meshcorekmp.protocol
+
+sealed class Response {
+	data class Ok(val value: Int? = null) : Response()
+
+	data class Error(val code: Int) : Response()
+
+	data class DeviceInfo(
+		val firmwareVersion: Int,
+		val maxContacts: Int,
+		val maxChannels: Int,
+		val blePin: Int,
+		val firmwareBuild: String,
+		val model: String,
+		val version: String,
+	) : Response()
+
+	data class SelfInfo(
+		val advertisementType: Int,
+		val txPower: Int,
+		val maxTxPower: Int,
+		val publicKey: String,
+		val advertisementLatitude: Double?,
+		val advertisementLongitude: Double?,
+		val multiAcks: Int,
+		val advertisementLocationPolicy: Int,
+		val telemetryModeBase: Int,
+		val telemetryModeLoc: Int,
+		val telemetryModeEnv: Int,
+		val manualAddContacts: Boolean,
+		val radioFrequency: Double,
+		val radioBandwidth: Double,
+		val radioSpreadingFactor: Int,
+		val radioCodingRate: Int,
+		val deviceName: String,
+	) : Response()
+
+	data class Battery(
+		val levelPercent: Int,
+		val usedStorageKb: Int?,
+		val totalStorageKb: Int?,
+	) : Response()
+
+	data class ChannelInfo(
+		val index: Int,
+		val name: String,
+	) : Response()
+
+	data object ContactStart : Response()
+
+	data class Contact(
+		val rawData: ByteArray,
+	) : Response() {
+		override fun equals(other: Any?): Boolean {
+			if (this === other) return true
+			if (other !is Contact) return false
+			return rawData.contentEquals(other.rawData)
+		}
+
+		override fun hashCode(): Int = rawData.contentHashCode()
+	}
+
+	data object ContactEnd : Response()
+
+	data class MessageSent(
+		val messageType: Int,
+		val expectedAck: String,
+		val suggestedTimeoutSeconds: Int,
+	) : Response()
+
+	data class ChannelMessageReceived(
+		val channelIndex: Int,
+		val pathLength: Int,
+		val textType: Int,
+		val timestamp: Long,
+		val text: String,
+		val snr: Float?,
+	) : Response()
+
+	data class ContactMessageReceived(
+		val publicKeyPrefix: String,
+		val pathLength: Int,
+		val textType: Int,
+		val timestamp: Long,
+		val signature: String?,
+		val text: String,
+		val snr: Float?,
+	) : Response()
+
+	data object NoMoreMessages : Response()
+
+	data class MessagesWaiting(val count: Int) : Response()
+
+	data class Ack(val ackCode: String) : Response()
+
+	data class AdvertisementReceived(val rawData: ByteArray) : Response() {
+		override fun equals(other: Any?): Boolean {
+			if (this === other) return true
+			if (other !is AdvertisementReceived) return false
+			return rawData.contentEquals(other.rawData)
+		}
+
+		override fun hashCode(): Int = rawData.contentHashCode()
+	}
+
+	data class CurrentTime(val timestamp: Long) : Response()
+
+	sealed class Stats : Response() {
+		data class Core(
+			val batteryMillivolts: Int,
+			val uptimeSeconds: Long,
+			val errors: Int,
+			val queueLength: Int,
+		) : Stats()
+
+		data class Radio(
+			val noiseFloorDbm: Int,
+			val lastRssiDbm: Int,
+			val lastSnrDb: Float,
+			val txAirtimeSeconds: Long,
+			val rxAirtimeSeconds: Long,
+		) : Stats()
+
+		data class Packets(
+			val received: Long,
+			val sent: Long,
+			val floodTx: Long,
+			val directTx: Long,
+			val floodRx: Long,
+			val directRx: Long,
+			val recvErrors: Long?,
+		) : Stats()
+	}
+
+	data class LogData(val rawData: ByteArray) : Response() {
+		override fun equals(other: Any?): Boolean {
+			if (this === other) return true
+			if (other !is LogData) return false
+			return rawData.contentEquals(other.rawData)
+		}
+
+		override fun hashCode(): Int = rawData.contentHashCode()
+	}
+}
