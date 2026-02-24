@@ -21,7 +21,7 @@ Provides high-level, ergonomic access to to send and receive data via Bluetooth 
 
 Add the dependency to your `build.gradle` file:
 ```kts
-implementation("com.darkrockstudios:meshcore:0.9.0")
+implementation("com.darkrockstudios:meshcore:0.9.3")
 ```
 
 Create a `BlueFalconBleAdapter` with a platform-specific `BlueFalcon` instance, then pass it to `DeviceScanner`:
