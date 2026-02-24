@@ -6,7 +6,9 @@
 [![KMP](https://img.shields.io/badge/platforms:-blue.svg?logo=kotlin)](http://kotlinlang.org)
 ![badge-android] ![badge-ios]
 
-Kotlin Multiplatform Library
+A Kotlin Multiplatform MeshCore Library.
+
+Provides high-level, ergonomic access to to send and receive data via Bluetooth MeshCore Companions.
 
 ### Run Sample App
 
