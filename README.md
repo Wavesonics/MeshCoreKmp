@@ -1,6 +1,10 @@
 # MeshCoreKmp
 
+[![Maven Central](https://img.shields.io/maven-central/v/com.darkrockstudios/meshcore.svg)](https://search.maven.org/artifact/com.darkrockstudios/meshcore)
 [![build-and-test](https://github.com/Wavesonics/MeshCoreKmp/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/Wavesonics/MeshCoreKmp/actions/workflows/build-and-test.yml)
+
+[![KMP](https://img.shields.io/badge/platforms:-blue.svg?logo=kotlin)](http://kotlinlang.org)
+![badge-android] ![badge-ios]
 
 Kotlin Multiplatform Library
 
@@ -12,6 +16,11 @@ Kotlin Multiplatform Library
 ## API Usage
 
 ### Setup
+
+Add the dependency to your `build.gradle` file:
+```kts
+implementation("com.darkrockstudios:meshcore:0.9.0")
+```
 
 Create a `BlueFalconBleAdapter` with a platform-specific `BlueFalcon` instance, then pass it to `DeviceScanner`:
 
@@ -171,4 +180,35 @@ allChannels.forEach { ch ->
 ```kotlin                                                                                                                                                                                                                                                                                                                   
 connection.disconnect()                                                                                                                                                                                                                                                                                                     
 ```                                                                                                                                                                                                                                                                                                                         
- 
+
+
+
+[badge-android]: http://img.shields.io/badge/-android-6EDB8D.svg?style=flat
+
+[badge-jvm]: http://img.shields.io/badge/-jvm-DB413D.svg?style=flat
+
+[badge-js]: http://img.shields.io/badge/-js-F8DB5D.svg?style=flat
+
+[badge-js-ir]: https://img.shields.io/badge/support-[IR]-AAC4E0.svg?style=flat
+
+[badge-linux]: http://img.shields.io/badge/-linux-2D3F6C.svg?style=flat
+
+[badge-windows]: http://img.shields.io/badge/-windows-4D76CD.svg?style=flat
+
+[badge-wasm]: https://img.shields.io/badge/-wasm-624FE8.svg?style=flat
+
+[badge-wasmi]: https://img.shields.io/badge/-wasi-626FFF.svg?style=flat
+
+[badge-jsir]: https://img.shields.io/badge/-js(IR)-22D655.svg?style=flat
+
+[badge-apple-silicon]: http://img.shields.io/badge/support-[AppleSilicon]-43BBFF.svg?style=flat
+
+[badge-ios]: http://img.shields.io/badge/-ios-CDCDCD.svg?style=flat
+
+[badge-ios-sim]: http://img.shields.io/badge/-iosSim-AFAFAF.svg?style=flat
+
+[badge-mac-arm]: http://img.shields.io/badge/-macosArm-444444.svg?style=flat
+
+[badge-mac-x86]: http://img.shields.io/badge/-macosX86-111111.svg?style=flat
+
+[badge-watchos]: http://img.shields.io/badge/-watchos-C0C0C0.svg?style=flat
