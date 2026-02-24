@@ -51,7 +51,7 @@ android {
 //Publishing your Kotlin Multiplatform library to Maven Central
 //https://www.jetbrains.com/help/kotlin-multiplatform-dev/multiplatform-publish-libraries.html
 mavenPublishing {
-    publishToMavenCentral()
+    publishToMavenCentral(automaticRelease = true)
     coordinates("com.darkrockstudios.libs.meshcorekmp", "MeshCore", providers.gradleProperty("library.version").get())
 
     pom {
