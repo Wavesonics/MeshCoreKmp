@@ -24,4 +24,4 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build and Run Tests
-        run: ./gradlew build
+        run: ./gradlew :MeshCore:build
