@@ -9,7 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import com.darkrockstudios.libs.meshcorekmp.ble.BlueFalconBleAdapter
+import com.darkrockstudios.libs.meshcore.ble.BlueFalconBleAdapter
 import dev.bluefalcon.BlueFalcon
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier

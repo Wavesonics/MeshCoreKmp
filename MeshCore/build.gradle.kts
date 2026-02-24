@@ -40,7 +40,7 @@ kotlin {
 }
 
 android {
-    namespace = "com.darkrockstudios.libs.meshcorekmp"
+    namespace = "com.darkrockstudios.libs.meshcore"
     compileSdk = 36
 
     defaultConfig {
@@ -52,7 +52,7 @@ android {
 //https://www.jetbrains.com/help/kotlin-multiplatform-dev/multiplatform-publish-libraries.html
 mavenPublishing {
     publishToMavenCentral(automaticRelease = true)
-    coordinates("com.darkrockstudios.libs.meshcorekmp", "meshcore", providers.gradleProperty("library.version").get())
+    coordinates("com.darkrockstudios.libs.meshcore", "meshcore", providers.gradleProperty("library.version").get())
 
     pom {
         name = "MeshCoreKmp"

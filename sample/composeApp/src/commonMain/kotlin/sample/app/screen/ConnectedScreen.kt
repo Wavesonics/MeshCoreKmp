@@ -23,9 +23,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.darkrockstudios.libs.meshcorekmp.DeviceConnection
-import com.darkrockstudios.libs.meshcorekmp.ble.ConnectionState
-import com.darkrockstudios.libs.meshcorekmp.model.BatteryInfo
+import com.darkrockstudios.libs.meshcore.DeviceConnection
+import com.darkrockstudios.libs.meshcore.ble.ConnectionState
+import com.darkrockstudios.libs.meshcore.model.BatteryInfo
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

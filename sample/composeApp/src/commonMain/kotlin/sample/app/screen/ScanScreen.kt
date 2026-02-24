@@ -29,9 +29,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.darkrockstudios.libs.meshcorekmp.DeviceConnection
-import com.darkrockstudios.libs.meshcorekmp.DeviceScanner
-import com.darkrockstudios.libs.meshcorekmp.ble.DiscoveredDevice
+import com.darkrockstudios.libs.meshcore.DeviceConnection
+import com.darkrockstudios.libs.meshcore.DeviceScanner
+import com.darkrockstudios.libs.meshcore.ble.DiscoveredDevice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 

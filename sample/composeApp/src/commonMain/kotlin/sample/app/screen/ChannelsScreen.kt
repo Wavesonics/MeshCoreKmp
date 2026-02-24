@@ -30,8 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.darkrockstudios.libs.meshcorekmp.DeviceConnection
-import com.darkrockstudios.libs.meshcorekmp.model.Channel
+import com.darkrockstudios.libs.meshcore.DeviceConnection
+import com.darkrockstudios.libs.meshcore.model.Channel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

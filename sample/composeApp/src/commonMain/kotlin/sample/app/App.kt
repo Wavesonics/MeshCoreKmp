@@ -11,9 +11,9 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
-import com.darkrockstudios.libs.meshcorekmp.DeviceConnection
-import com.darkrockstudios.libs.meshcorekmp.DeviceScanner
-import com.darkrockstudios.libs.meshcorekmp.ble.BleAdapter
+import com.darkrockstudios.libs.meshcore.DeviceConnection
+import com.darkrockstudios.libs.meshcore.DeviceScanner
+import com.darkrockstudios.libs.meshcore.ble.BleAdapter
 import kotlinx.coroutines.launch
 import sample.app.navigation.ChannelRoute
 import sample.app.navigation.ChannelsRoute
