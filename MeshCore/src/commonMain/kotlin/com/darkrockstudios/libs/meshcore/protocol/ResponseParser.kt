@@ -6,6 +6,7 @@ object ResponseParser {
 		if (data.isEmpty()) return null
 		val code = data[0].toInt() and 0xFF
 		return when (code) {
+			// Solicited responses — fully parsed
 			ResponseCode.PACKET_OK -> parseOk(data)
 			ResponseCode.PACKET_ERROR -> parseError(data)
 			ResponseCode.PACKET_DEVICE_INFO -> parseDeviceInfo(data)
@@ -21,15 +22,18 @@ object ResponseParser {
 			ResponseCode.PACKET_CONTACT_MSG_RECV -> parseContactMessage(data, v3 = false)
 			ResponseCode.PACKET_CONTACT_MSG_RECV_V3 -> parseContactMessage(data, v3 = true)
 			ResponseCode.PACKET_NO_MORE_MSGS -> Response.NoMoreMessages
-			ResponseCode.PACKET_MESSAGES_WAITING -> parseMessagesWaiting(data)
-			ResponseCode.PACKET_ACK -> parseAck(data)
-			ResponseCode.PACKET_ADVERTISEMENT -> parseAdvertisement(data)
 			ResponseCode.PACKET_CURRENT_TIME -> parseCurrentTime(data)
 			ResponseCode.RESP_CODE_STATS -> parseStats(data)
+
+			// Push events — fully parsed
+			ResponseCode.PUSH_CODE_ADVERTISEMENT -> parseAdvertisement(data)
+			ResponseCode.PUSH_CODE_ACK -> parseAck(data)
+			ResponseCode.PUSH_CODE_MSG_WAITING -> parseMessagesWaiting(data)
 			ResponseCode.PUSH_CODE_RAW_DATA -> parseRawData(data)
-			ResponseCode.PACKET_LOG_DATA -> Response.LogData(data.copyOfRange(1, data.size))
+			ResponseCode.PUSH_CODE_LOG_DATA -> Response.LogData(data.copyOfRange(1, data.size))
 			ResponseCode.PUSH_CODE_BINARY_RESPONSE -> parseBinaryResponse(data)
-			else -> null
+
+			else -> Response.Unhandled(code, data.copyOfRange(1, data.size))
 		}
 	}
 

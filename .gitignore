@@ -15,3 +15,6 @@ Pods/
 *.jks
 *.gpg
 *yarn.lock
+.output.txt
+CLAUDE.md
+.claude/settings.local.json

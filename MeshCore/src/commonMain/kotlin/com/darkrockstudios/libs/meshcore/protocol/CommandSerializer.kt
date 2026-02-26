@@ -4,15 +4,19 @@ object CommandSerializer {
 
 	fun appStart(appName: String = "mccli"): ByteArray {
 		val nameBytes = appName.encodeToByteArray()
-		val buffer = ByteArray(11)
+		val buffer = ByteArray(8 + nameBytes.size)
 		buffer[0] = CommandCode.APP_START.toByte()
 		buffer[1] = 0x03
-		nameBytes.copyInto(buffer, 2, 0, minOf(nameBytes.size, 9))
+		// Bytes 2-7 are reserved (zero-filled by default)
+		nameBytes.copyInto(buffer, 8)
 		return buffer
 	}
 
 	fun deviceQuery(): ByteArray =
 		byteArrayOf(CommandCode.DEVICE_QUERY.toByte(), 0x03)
+
+	fun getContacts(): ByteArray =
+		byteArrayOf(CommandCode.GET_CONTACTS.toByte())
 
 	fun getChannel(index: Int): ByteArray {
 		require(index in 0..7) { "Channel index must be 0-7" }
@@ -48,6 +52,16 @@ object CommandSerializer {
 
 	fun getMessage(): ByteArray =
 		byteArrayOf(CommandCode.GET_MESSAGE.toByte())
+
+	fun getDeviceTime(): ByteArray =
+		byteArrayOf(CommandCode.GET_DEVICE_TIME.toByte())
+
+	fun setDeviceTime(epochSeconds: Long): ByteArray {
+		val buffer = ByteArray(5)
+		buffer[0] = CommandCode.SET_DEVICE_TIME.toByte()
+		putUInt32LE(buffer, 1, epochSeconds)
+		return buffer
+	}
 
 	fun getBattery(): ByteArray =
 		byteArrayOf(CommandCode.GET_BATTERY.toByte())

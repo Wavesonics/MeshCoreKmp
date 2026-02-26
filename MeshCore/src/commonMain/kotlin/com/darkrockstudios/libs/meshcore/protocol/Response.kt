@@ -177,4 +177,23 @@ sealed class Response {
 
 		override fun hashCode(): Int = rawData.contentHashCode()
 	}
+
+	/**
+	 * A packet with a recognized type code but no dedicated parser.
+	 * Used for protocol codes we know about but haven't fully implemented yet,
+	 * so they are routed correctly instead of blocking the command queue.
+	 */
+	data class Unhandled(val code: Int, val rawData: ByteArray) : Response() {
+		override fun equals(other: Any?): Boolean {
+			if (this === other) return true
+			if (other !is Unhandled) return false
+			return code == other.code && rawData.contentEquals(other.rawData)
+		}
+
+		override fun hashCode(): Int {
+			var result = code
+			result = 31 * result + rawData.contentHashCode()
+			return result
+		}
+	}
 }

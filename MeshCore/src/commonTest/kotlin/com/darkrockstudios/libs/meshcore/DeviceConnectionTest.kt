@@ -15,6 +15,25 @@ import kotlin.test.assertNotNull
 
 class DeviceConnectionTest {
 
+	private fun createSelfInfoResponse(): ByteArray {
+		val data = ByteArray(63) // 58 min + 5 for device name "Test\0"
+		data[0] = 0x05 // PACKET_SELF_INFO
+		data[1] = 0x01 // adv_type
+		data[2] = 22   // tx_power
+		data[3] = 22   // max_tx_power
+		// bytes 4-35: public key (32 zeros)
+		// bytes 36-43: lat/lon (zeros)
+		// byte 44: multi_acks
+		// byte 45: adv_loc_policy
+		// byte 46: telemetry_mode
+		// byte 47: manual_add_contacts
+		// bytes 48-55: radio freq/bw (zeros)
+		// byte 56: radio_sf
+		// byte 57: radio_cr
+		"Test".encodeToByteArray().copyInto(data, 58) // device name
+		return data
+	}
+
 	private fun createDeviceInfoResponse(): ByteArray {
 		val data = ByteArray(80)
 		data[0] = 0x0D
@@ -43,6 +62,7 @@ class DeviceConnectionTest {
 			connection = bleConnection,
 			scope = backgroundScope,
 		)
+		testScheduler.advanceUntilIdle()
 		val config = ConnectionConfig(
 			autoSyncTime = false,
 			autoFetchContacts = false,
@@ -60,7 +80,7 @@ class DeviceConnectionTest {
 		launch {
 			// Wait for APP_START
 			while (bleConnection.writtenData.isEmpty()) { kotlinx.coroutines.yield() }
-			bleConnection.simulateResponse(byteArrayOf(0x00)) // OK
+			bleConnection.simulateResponse(createSelfInfoResponse()) // SelfInfo
 			kotlinx.coroutines.yield()
 
 			// Wait for DEVICE_QUERY
@@ -91,6 +111,7 @@ class DeviceConnectionTest {
 			connection = bleConnection,
 			scope = backgroundScope,
 		)
+		testScheduler.advanceUntilIdle()
 		val config = ConnectionConfig(
 			autoSyncTime = false,
 			autoFetchContacts = false,
@@ -107,7 +128,7 @@ class DeviceConnectionTest {
 		// Initialize
 		launch {
 			while (bleConnection.writtenData.isEmpty()) { kotlinx.coroutines.yield() }
-			bleConnection.simulateResponse(byteArrayOf(0x00))
+			bleConnection.simulateResponse(createSelfInfoResponse())
 			kotlinx.coroutines.yield()
 			while (bleConnection.writtenData.size < 2) { kotlinx.coroutines.yield() }
 			bleConnection.simulateResponse(createDeviceInfoResponse())
@@ -132,6 +153,7 @@ class DeviceConnectionTest {
 			connection = bleConnection,
 			scope = backgroundScope,
 		)
+		testScheduler.advanceUntilIdle()
 		val config = ConnectionConfig(
 			autoSyncTime = false,
 			autoFetchContacts = false,
@@ -148,7 +170,7 @@ class DeviceConnectionTest {
 		// Initialize
 		launch {
 			while (bleConnection.writtenData.isEmpty()) { kotlinx.coroutines.yield() }
-			bleConnection.simulateResponse(byteArrayOf(0x00))
+			bleConnection.simulateResponse(createSelfInfoResponse())
 			kotlinx.coroutines.yield()
 			while (bleConnection.writtenData.size < 2) { kotlinx.coroutines.yield() }
 			bleConnection.simulateResponse(createDeviceInfoResponse())
@@ -172,6 +194,7 @@ class DeviceConnectionTest {
 			connection = bleConnection,
 			scope = backgroundScope,
 		)
+		testScheduler.advanceUntilIdle()
 		val config = ConnectionConfig(
 			autoSyncTime = false,
 			autoFetchContacts = false,
@@ -188,7 +211,7 @@ class DeviceConnectionTest {
 		// Initialize
 		launch {
 			while (bleConnection.writtenData.isEmpty()) { kotlinx.coroutines.yield() }
-			bleConnection.simulateResponse(byteArrayOf(0x00))
+			bleConnection.simulateResponse(createSelfInfoResponse())
 			kotlinx.coroutines.yield()
 			while (bleConnection.writtenData.size < 2) { kotlinx.coroutines.yield() }
 			bleConnection.simulateResponse(createDeviceInfoResponse())
@@ -226,6 +249,7 @@ class DeviceConnectionTest {
 			connection = bleConnection,
 			scope = backgroundScope,
 		)
+		testScheduler.advanceUntilIdle()
 		val config = ConnectionConfig(
 			autoSyncTime = false,
 			autoFetchContacts = false,
@@ -242,7 +266,7 @@ class DeviceConnectionTest {
 		// Initialize
 		launch {
 			while (bleConnection.writtenData.isEmpty()) { kotlinx.coroutines.yield() }
-			bleConnection.simulateResponse(byteArrayOf(0x00))
+			bleConnection.simulateResponse(createSelfInfoResponse())
 			kotlinx.coroutines.yield()
 			while (bleConnection.writtenData.size < 2) { kotlinx.coroutines.yield() }
 			bleConnection.simulateResponse(createDeviceInfoResponse())
@@ -270,6 +294,7 @@ class DeviceConnectionTest {
 			connection = bleConnection,
 			scope = backgroundScope,
 		)
+		testScheduler.advanceUntilIdle()
 		val config = ConnectionConfig(
 			autoSyncTime = false,
 			autoFetchContacts = false,
@@ -286,7 +311,7 @@ class DeviceConnectionTest {
 		// Initialize
 		launch {
 			while (bleConnection.writtenData.isEmpty()) { kotlinx.coroutines.yield() }
-			bleConnection.simulateResponse(byteArrayOf(0x00))
+			bleConnection.simulateResponse(createSelfInfoResponse())
 			kotlinx.coroutines.yield()
 			while (bleConnection.writtenData.size < 2) { kotlinx.coroutines.yield() }
 			bleConnection.simulateResponse(createDeviceInfoResponse())

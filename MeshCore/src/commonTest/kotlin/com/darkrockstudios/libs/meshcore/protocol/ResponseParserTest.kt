@@ -13,8 +13,10 @@ class ResponseParserTest {
 	}
 
 	@Test
-	fun parse_unknownCode_returnsNull() {
-		assertNull(ResponseParser.parse(byteArrayOf(0x7F)))
+	fun parse_unknownCode_returnsUnhandled() {
+		val result = ResponseParser.parse(byteArrayOf(0x7F))
+		assertIs<Response.Unhandled>(result)
+		assertEquals(0x7F, result.code)
 	}
 
 	@Test
@@ -36,10 +38,10 @@ class ResponseParserTest {
 
 	@Test
 	fun parse_packetError_withCode() {
-		val data = byteArrayOf(0x01, 0x03) // Channel not found
+		val data = byteArrayOf(0x01, 0x03) // TABLE_FULL
 		val result = ResponseParser.parse(data)
 		assertIs<Response.Error>(result)
-		assertEquals(ErrorCode.CHANNEL_NOT_FOUND, result.code)
+		assertEquals(ErrorCode.TABLE_FULL, result.code)
 	}
 
 	@Test

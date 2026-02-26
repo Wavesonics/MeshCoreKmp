@@ -61,7 +61,7 @@ class CommandQueueTest {
 				command = CommandSerializer.getBattery(),
 			)
 		}
-		assertEquals(ErrorCode.MESSAGE_TOO_LONG, exception.errorCode)
+		assertEquals(0x07, exception.errorCode)
 	}
 
 	@Test

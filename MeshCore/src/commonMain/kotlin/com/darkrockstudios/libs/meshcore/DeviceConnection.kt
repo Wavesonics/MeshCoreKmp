@@ -3,7 +3,9 @@ package com.darkrockstudios.libs.meshcore
 import com.darkrockstudios.libs.meshcore.ble.BleConnection
 import com.darkrockstudios.libs.meshcore.ble.ConnectionState
 import com.darkrockstudios.libs.meshcore.model.*
-import com.darkrockstudios.libs.meshcore.protocol.*
+import com.darkrockstudios.libs.meshcore.protocol.CommandQueue
+import com.darkrockstudios.libs.meshcore.protocol.CommandSerializer
+import com.darkrockstudios.libs.meshcore.protocol.Response
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -49,11 +51,12 @@ class DeviceConnection internal constructor(
 		.map { ReceivedBinaryResponse(tag = it.tag, responseData = it.responseData) }
 
 	internal suspend fun initialize() {
-		// 1. APP_START
-		commandQueue.execute<Response.Ok>(
+		// 1. APP_START — returns SelfInfo
+		val selfInfoResp = commandQueue.execute<Response.SelfInfo>(
 			CommandSerializer.appStart(config.appName),
 			config.commandTimeout,
 		)
+		_selfInfo.value = selfInfoResp.toDomainModel()
 
 		// 2. DEVICE_QUERY
 		val deviceInfoResp = commandQueue.execute<Response.DeviceInfo>(
@@ -224,11 +227,25 @@ class DeviceConnection internal constructor(
 	// --- Contacts ---
 
 	suspend fun getContacts(): List<Contact> {
-		// Contact fetching requires CMD_GET_CONTACTS which streams
-		// CONTACT_START -> CONTACT* -> CONTACT_END responses.
-		// This is a simplified placeholder - the actual command code
-		// isn't fully documented in the companion spec.
-		return _contacts.value
+		val contactList = mutableListOf<Contact>()
+		commandQueue.executeStreaming<Response.ContactEnd>(
+			CommandSerializer.getContacts(),
+			config.commandTimeout,
+			onResponse = { response ->
+				when (response) {
+					is Response.Contact -> {
+						contactList.add(response.toDomainModel())
+						true // continue
+					}
+
+					is Response.ContactEnd -> false // stop
+					is Response.ContactStart -> true // continue
+					else -> true // ignore others?
+				}
+			}
+		)
+		_contacts.value = contactList
+		return contactList
 	}
 
 	// --- Stats ---
@@ -279,13 +296,61 @@ class DeviceConnection internal constructor(
 	// --- Time sync ---
 
 	suspend fun syncDeviceTime() {
-		// Sync time by sending current timestamp
-		// Uses the APP_START response's timestamp or sends a time sync command
-		// The exact time sync command format isn't fully documented,
-		// but typically it's the current Unix timestamp sent to the device
+		val now = currentTimeSeconds()
+		val deviceTime = commandQueue.execute<Response.CurrentTime>(
+			CommandSerializer.getDeviceTime(),
+			config.commandTimeout,
+		)
+		if (now >= deviceTime.timestamp) {
+			commandQueue.execute<Response.Ok>(
+				CommandSerializer.setDeviceTime(now),
+				config.commandTimeout,
+			)
+		}
 	}
 
 	// --- Conversion helpers ---
+
+	private fun Response.Contact.toDomainModel(): Contact {
+		val pubKeyPrefix = rawData.copyOfRange(0, 6).toHexString()
+		val name = extractNullTerminatedString(rawData, 6)
+		return Contact(
+			publicKeyPrefix = pubKeyPrefix,
+			name = name,
+			lastSeen = currentTimeSeconds(), // Or 0 if not provided
+		)
+	}
+
+	private fun extractNullTerminatedString(data: ByteArray, offset: Int): String {
+		var end = offset
+		while (end < data.size && data[end] != 0.toByte()) {
+			end++
+		}
+		return data.decodeToString(offset, end)
+	}
+
+	private fun ByteArray.toHexString(): String =
+		joinToString("") { it.toInt().and(0xFF).toString(16).padStart(2, '0') }
+
+	private fun Response.SelfInfo.toDomainModel() = SelfInfo(
+		advertisementType = advertisementType,
+		txPower = txPower,
+		maxTxPower = maxTxPower,
+		publicKey = publicKey,
+		advertisementLatitude = advertisementLatitude,
+		advertisementLongitude = advertisementLongitude,
+		multiAcks = multiAcks,
+		advertisementLocationPolicy = advertisementLocationPolicy,
+		telemetryModeBase = telemetryModeBase,
+		telemetryModeLoc = telemetryModeLoc,
+		telemetryModeEnv = telemetryModeEnv,
+		manualAddContacts = manualAddContacts,
+		radioFrequency = radioFrequency,
+		radioBandwidth = radioBandwidth,
+		radioSpreadingFactor = radioSpreadingFactor,
+		radioCodingRate = radioCodingRate,
+		deviceName = deviceName,
+	)
 
 	private fun Response.DeviceInfo.toDomainModel() = DeviceInfo(
 		firmwareVersion = firmwareVersion,
