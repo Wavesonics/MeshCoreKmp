@@ -10,46 +10,54 @@ class CommandSerializerTest {
 	@Test
 	fun appStart_defaultName() {
 		val result = CommandSerializer.appStart()
-		assertEquals(11, result.size)
-		assertEquals(0x01.toByte(), result[0])
-		assertEquals(0x03.toByte(), result[1])
-		// "mccli" = 6d 63 63 6c 69
-		assertEquals(0x6d.toByte(), result[2])
-		assertEquals(0x63.toByte(), result[3])
-		assertEquals(0x63.toByte(), result[4])
-		assertEquals(0x6c.toByte(), result[5])
-		assertEquals(0x69.toByte(), result[6])
-		// Remaining bytes should be zero (null-padded)
-		assertEquals(0x00.toByte(), result[7])
-		assertEquals(0x00.toByte(), result[8])
-		assertEquals(0x00.toByte(), result[9])
-		assertEquals(0x00.toByte(), result[10])
+		// 8 header bytes + 5 name bytes ("mccli")
+		assertEquals(13, result.size)
+		assertEquals(0x01.toByte(), result[0]) // APP_START
+		assertEquals(0x03.toByte(), result[1]) // protocol version
+		// Bytes 2-7: reserved (zeros)
+		for (i in 2..7) {
+			assertEquals(0x00.toByte(), result[i])
+		}
+		// "mccli" = 6d 63 63 6c 69 starting at byte 8
+		assertEquals(0x6d.toByte(), result[8])
+		assertEquals(0x63.toByte(), result[9])
+		assertEquals(0x63.toByte(), result[10])
+		assertEquals(0x6c.toByte(), result[11])
+		assertEquals(0x69.toByte(), result[12])
 	}
 
 	@Test
 	fun appStart_customName() {
 		val result = CommandSerializer.appStart("test")
-		assertEquals(11, result.size)
+		// 8 header bytes + 4 name bytes ("test")
+		assertEquals(12, result.size)
 		assertEquals(0x01.toByte(), result[0])
 		assertEquals(0x03.toByte(), result[1])
-		// "test" = 74 65 73 74
-		assertEquals(0x74.toByte(), result[2])
-		assertEquals(0x65.toByte(), result[3])
-		assertEquals(0x73.toByte(), result[4])
-		assertEquals(0x74.toByte(), result[5])
-		// Remaining 5 bytes should be zero
-		for (i in 6..10) {
+		// Bytes 2-7: reserved (zeros)
+		for (i in 2..7) {
 			assertEquals(0x00.toByte(), result[i])
 		}
+		// "test" = 74 65 73 74 starting at byte 8
+		assertEquals(0x74.toByte(), result[8])
+		assertEquals(0x65.toByte(), result[9])
+		assertEquals(0x73.toByte(), result[10])
+		assertEquals(0x74.toByte(), result[11])
 	}
 
 	@Test
-	fun appStart_longNameTruncated() {
+	fun appStart_longNameIncluded() {
 		val result = CommandSerializer.appStart("verylongname")
-		assertEquals(11, result.size)
-		// Only first 9 chars should be written
+		// 8 header bytes + 12 name bytes
+		assertEquals(20, result.size)
 		assertEquals(0x01.toByte(), result[0])
 		assertEquals(0x03.toByte(), result[1])
+		// Bytes 2-7: reserved (zeros)
+		for (i in 2..7) {
+			assertEquals(0x00.toByte(), result[i])
+		}
+		// Full name starts at byte 8
+		val name = result.copyOfRange(8, 20).decodeToString()
+		assertEquals("verylongname", name)
 	}
 
 	@Test

@@ -26,6 +26,16 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
         }
 
+        val androidInstrumentedTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.androidx.test.runner)
+                implementation(libs.androidx.test.rules)
+                implementation(libs.androidx.test.ext.junit)
+            }
+        }
+
     }
 
     //https://kotlinlang.org/docs/native-objc-interop.html#export-of-kdoc-comments-to-generated-objective-c-headers
@@ -45,6 +55,7 @@ android {
 
     defaultConfig {
         minSdk = 21
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 }
 

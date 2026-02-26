@@ -1,31 +1,14 @@
 package sample.app.screen
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.libs.meshcore.DeviceConnection
 import com.darkrockstudios.libs.meshcore.ble.ConnectionState
 import com.darkrockstudios.libs.meshcore.model.BatteryInfo
+import com.darkrockstudios.libs.meshcore.model.Contact
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,6 +24,12 @@ fun ConnectedScreen(
 	var batteryInfo by remember { mutableStateOf<BatteryInfo?>(null) }
 	var batteryError by remember { mutableStateOf<String?>(null) }
 	var isFetchingBattery by remember { mutableStateOf(false) }
+
+	var contacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
+	var isFetchingContacts by remember { mutableStateOf(false) }
+	var contactsError by remember { mutableStateOf<String?>(null) }
+	var expanded by remember { mutableStateOf(false) }
+	var selectedContact by remember { mutableStateOf<Contact?>(null) }
 
 	// Watch for unexpected disconnection
 	LaunchedEffect(connectionState) {
@@ -117,6 +106,76 @@ fun ConnectedScreen(
 				modifier = Modifier.fillMaxWidth(),
 			) {
 				Text("Channels")
+			}
+
+			// Contacts Button
+			Button(
+				onClick = {
+					isFetchingContacts = true
+					contactsError = null
+					scope.launch {
+						try {
+							contacts = connection.getContacts()
+						} catch (e: Exception) {
+							contactsError = "Failed: ${e.message}"
+						} finally {
+							isFetchingContacts = false
+						}
+					}
+				},
+				enabled = !isFetchingContacts,
+				modifier = Modifier.fillMaxWidth(),
+			) {
+				Text(if (isFetchingContacts) "Fetching Contacts..." else "Get Contacts")
+			}
+
+			if (contactsError != null) {
+				Text(
+					text = contactsError!!,
+					color = MaterialTheme.colorScheme.error,
+				)
+			}
+
+			if (contacts.isNotEmpty()) {
+				ExposedDropdownMenuBox(
+					expanded = expanded,
+					onExpandedChange = { expanded = !expanded },
+					modifier = Modifier.fillMaxWidth()
+				) {
+					OutlinedTextField(
+						value = selectedContact?.name ?: "Select Contact",
+						onValueChange = {},
+						readOnly = true,
+						label = { Text("Direct Contacts") },
+						trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+						colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+						modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true)
+							.fillMaxWidth()
+					)
+
+					ExposedDropdownMenu(
+						expanded = expanded,
+						onDismissRequest = { expanded = false }
+					) {
+						contacts.forEach { contact ->
+							DropdownMenuItem(
+								text = {
+									Column {
+										Text(contact.name)
+										Text(
+											contact.publicKeyPrefix,
+											style = MaterialTheme.typography.labelSmall
+										)
+									}
+								},
+								onClick = {
+									selectedContact = contact
+									expanded = false
+								}
+							)
+						}
+					}
+				}
 			}
 
 			if (batteryError != null) {

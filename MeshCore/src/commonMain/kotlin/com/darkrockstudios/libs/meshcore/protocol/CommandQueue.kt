@@ -20,7 +20,6 @@ class CommandQueue(
 	private val defaultTimeout: Duration = 5.seconds,
 ) {
 	private val commandMutex = Mutex()
-	private val packetBuffer = PacketBuffer()
 
 	private val _pushEvents = MutableSharedFlow<Response>(extraBufferCapacity = 64)
 	val pushEvents: SharedFlow<Response> = _pushEvents.asSharedFlow()
@@ -30,8 +29,8 @@ class CommandQueue(
 	init {
 		scope.launch {
 			connection.incomingData.collect { data ->
-				val responses = packetBuffer.processData(data)
-				for (response in responses) {
+				val response = ResponseParser.parse(data)
+				if (response != null) {
 					routeResponse(response)
 				}
 			}
@@ -54,6 +53,7 @@ class CommandQueue(
 		is Response.RawDataReceived -> true
 		is Response.BinaryResponse -> true
 		is Response.LogData -> true
+		is Response.Unhandled -> true // all unhandled known codes are push events or ignorable
 		else -> false
 	}
 
@@ -61,20 +61,35 @@ class CommandQueue(
 		command: ByteArray,
 		timeout: Duration = defaultTimeout,
 	): T {
+		return executeStreaming<T>(command, timeout) { false }
+	}
+
+	suspend fun <T : Response> executeStreaming(
+		command: ByteArray,
+		timeout: Duration = defaultTimeout,
+		onResponse: suspend (Response) -> Boolean,
+	): T {
 		commandMutex.withLock {
 			val responseChannel = Channel<Response>(1)
 			pendingResponseChannel = responseChannel
 
 			try {
 				connection.write(command)
-				val response = withTimeout(timeout) {
-					responseChannel.receive()
-				}
-				if (response is Response.Error) {
-					throw MeshCoreException.DeviceError(response.code)
+				var lastResponse: Response? = null
+				while (true) {
+					val response = withTimeout(timeout) {
+						responseChannel.receive()
+					}
+					if (response is Response.Error) {
+						throw MeshCoreException.DeviceError(response.code)
+					}
+					lastResponse = response
+					if (!onResponse(response)) {
+						break
+					}
 				}
 				@Suppress("UNCHECKED_CAST")
-				return response as T
+				return lastResponse as T
 			} catch (e: kotlinx.coroutines.TimeoutCancellationException) {
 				throw MeshCoreException.CommandTimeout(
 					"Command timed out after $timeout"
@@ -87,7 +102,6 @@ class CommandQueue(
 	}
 
 	fun reset() {
-		packetBuffer.reset()
 		pendingResponseChannel?.close()
 		pendingResponseChannel = null
 	}
