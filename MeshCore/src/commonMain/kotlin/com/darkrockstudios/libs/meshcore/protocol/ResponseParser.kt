@@ -150,8 +150,35 @@ object ResponseParser {
 		return Response.ChannelInfo(index = index, name = name)
 	}
 
-	private fun parseContact(data: ByteArray): Response.Contact {
-		return Response.Contact(rawData = data.copyOfRange(1, data.size))
+	private fun parseContact(data: ByteArray): Response.Contact? {
+		// Minimum size: 1 (type) + 32 (pubkey) + 1 (type) + 1 (flags) + 1 (pathLen) + 64 (path) + 32 (name) = 132
+		if (data.size < 132) return null
+
+		val publicKey = data.copyOfRange(1, 33).toHexString()
+		val contactType = data[33].toInt() and 0xFF
+		val flags = data[34].toInt() and 0xFF
+		val outPathLen = data[35].toInt() // signed
+		// bytes 36-99: out_path (64 bytes) — skipped
+		val name = extractString(data, 100, 32)
+
+		val lastAdvertTimestamp = if (data.size >= 136) getUInt32LE(data, 132) else 0L
+		val rawLat = if (data.size >= 140) getInt32LE(data, 136) else 0
+		val rawLon = if (data.size >= 144) getInt32LE(data, 140) else 0
+		val gpsLat = if (rawLat != 0) rawLat / 1_000_000.0 else null
+		val gpsLon = if (rawLon != 0) rawLon / 1_000_000.0 else null
+		val lastmod = if (data.size >= 148) getUInt32LE(data, 144) else 0L
+
+		return Response.Contact(
+			publicKey = publicKey,
+			type = contactType,
+			flags = flags,
+			outPathLen = outPathLen,
+			name = name,
+			lastAdvertTimestamp = lastAdvertTimestamp,
+			gpsLatitude = gpsLat,
+			gpsLongitude = gpsLon,
+			lastmod = lastmod,
+		)
 	}
 
 	private fun parseMessageSent(data: ByteArray): Response.MessageSent? {
