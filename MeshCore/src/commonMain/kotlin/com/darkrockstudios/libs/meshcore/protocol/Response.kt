@@ -49,16 +49,16 @@ sealed class Response {
 	data object ContactStart : Response()
 
 	data class Contact(
-		val rawData: ByteArray,
-	) : Response() {
-		override fun equals(other: Any?): Boolean {
-			if (this === other) return true
-			if (other !is Contact) return false
-			return rawData.contentEquals(other.rawData)
-		}
-
-		override fun hashCode(): Int = rawData.contentHashCode()
-	}
+		val publicKey: String,
+		val type: Int,
+		val flags: Int,
+		val outPathLen: Int,
+		val name: String,
+		val lastAdvertTimestamp: Long,
+		val gpsLatitude: Double?,
+		val gpsLongitude: Double?,
+		val lastmod: Long,
+	) : Response()
 
 	data object ContactEnd : Response()
 

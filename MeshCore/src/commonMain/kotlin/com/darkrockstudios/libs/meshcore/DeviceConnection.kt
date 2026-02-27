@@ -312,25 +312,18 @@ class DeviceConnection internal constructor(
 	// --- Conversion helpers ---
 
 	private fun Response.Contact.toDomainModel(): Contact {
-		val pubKeyPrefix = rawData.copyOfRange(0, 6).toHexString()
-		val name = extractNullTerminatedString(rawData, 6)
 		return Contact(
-			publicKeyPrefix = pubKeyPrefix,
+			publicKey = publicKey,
+			publicKeyPrefix = publicKey.take(12),
 			name = name,
-			lastSeen = currentTimeSeconds(), // Or 0 if not provided
+			type = type,
+			flags = flags,
+			lastAdvertTimestamp = lastAdvertTimestamp,
+			gpsLatitude = gpsLatitude,
+			gpsLongitude = gpsLongitude,
+			lastmod = lastmod,
 		)
 	}
-
-	private fun extractNullTerminatedString(data: ByteArray, offset: Int): String {
-		var end = offset
-		while (end < data.size && data[end] != 0.toByte()) {
-			end++
-		}
-		return data.decodeToString(offset, end)
-	}
-
-	private fun ByteArray.toHexString(): String =
-		joinToString("") { it.toInt().and(0xFF).toString(16).padStart(2, '0') }
 
 	private fun Response.SelfInfo.toDomainModel() = SelfInfo(
 		advertisementType = advertisementType,
