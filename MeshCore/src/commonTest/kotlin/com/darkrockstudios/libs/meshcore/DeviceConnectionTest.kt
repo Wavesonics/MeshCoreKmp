@@ -96,12 +96,13 @@ class DeviceConnectionTest {
 		// Now test getBattery
 		launch {
 			while (bleConnection.writtenData.size < 3) { kotlinx.coroutines.yield() }
-			// Battery = 85%, no storage info
-			bleConnection.simulateResponse(byteArrayOf(0x0C, 0x55, 0x00))
+			// Battery = 3900 mV (0x0F3C), no storage info
+			bleConnection.simulateResponse(byteArrayOf(0x0C, 0x3C, 0x0F))
 		}
 
 		val battery = connection.getBattery()
-		assertEquals(85, battery.levelPercent)
+		assertEquals(3900, battery.milliVolts)
+		assertEquals(75, battery.levelPercent)
 	}
 
 	@Test

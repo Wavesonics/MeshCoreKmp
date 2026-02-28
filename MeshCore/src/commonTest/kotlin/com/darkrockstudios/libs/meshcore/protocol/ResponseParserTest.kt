@@ -54,11 +54,11 @@ class ResponseParserTest {
 
 	@Test
 	fun parse_battery_basicLevel() {
-		// Battery at 75%: 0x0C, 4B 00 (75 in LE uint16)
-		val data = byteArrayOf(0x0C, 0x4B, 0x00)
+		// Battery at 4018 mV: 0x0C, B2 0F (4018 in LE uint16)
+		val data = byteArrayOf(0x0C, 0xB2.toByte(), 0x0F)
 		val result = ResponseParser.parse(data)
 		assertIs<Response.Battery>(result)
-		assertEquals(75, result.levelPercent)
+		assertEquals(4018, result.milliVolts)
 		assertNull(result.usedStorageKb)
 		assertNull(result.totalStorageKb)
 	}
@@ -67,9 +67,9 @@ class ResponseParserTest {
 	fun parse_battery_withStorage() {
 		val data = ByteArray(11)
 		data[0] = 0x0C
-		// Battery = 100 (0x0064)
-		data[1] = 0x64
-		data[2] = 0x00
+		// Battery = 4200 mV (0x1068)
+		data[1] = 0x68
+		data[2] = 0x10
 		// Used storage = 1024 KB (0x00000400)
 		data[3] = 0x00
 		data[4] = 0x04
@@ -82,7 +82,7 @@ class ResponseParserTest {
 		data[10] = 0x00
 		val result = ResponseParser.parse(data)
 		assertIs<Response.Battery>(result)
-		assertEquals(100, result.levelPercent)
+		assertEquals(4200, result.milliVolts)
 		assertEquals(1024, result.usedStorageKb)
 		assertEquals(8192, result.totalStorageKb)
 	}

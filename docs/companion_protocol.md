@@ -587,7 +587,7 @@ def parse_device_info(data):
 **PACKET_BATTERY** (0x0C):
 ```
 Byte 0: 0x0C
-Bytes 1-2: Battery Level (16-bit little-endian, percentage 0-100)
+Bytes 1-2: Battery voltage in millivolts (16-bit little-endian)
 
 Optional (if data size > 3):
 Bytes 3-6: Used Storage (32-bit little-endian, KB)

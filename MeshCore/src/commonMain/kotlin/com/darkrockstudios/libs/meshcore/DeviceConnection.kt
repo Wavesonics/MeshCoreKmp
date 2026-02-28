@@ -105,7 +105,7 @@ class DeviceConnection internal constructor(
 			config.commandTimeout,
 		)
 		return BatteryInfo(
-			levelPercent = resp.levelPercent,
+			milliVolts = resp.milliVolts,
 			usedStorageKb = resp.usedStorageKb,
 			totalStorageKb = resp.totalStorageKb,
 		)

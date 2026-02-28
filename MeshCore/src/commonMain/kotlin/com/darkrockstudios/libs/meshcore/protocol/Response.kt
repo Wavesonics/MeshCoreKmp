@@ -36,7 +36,7 @@ sealed class Response {
 	) : Response()
 
 	data class Battery(
-		val levelPercent: Int,
+		val milliVolts: Int,
 		val usedStorageKb: Int?,
 		val totalStorageKb: Int?,
 	) : Response()

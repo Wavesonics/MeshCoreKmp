@@ -133,11 +133,11 @@ object ResponseParser {
 
 	private fun parseBattery(data: ByteArray): Response.Battery? {
 		if (data.size < 3) return null
-		val level = getUInt16LE(data, 1)
+		val milliVolts = getUInt16LE(data, 1)
 		val usedKb = if (data.size >= 7) getUInt32LE(data, 3).toInt() else null
 		val totalKb = if (data.size >= 11) getUInt32LE(data, 7).toInt() else null
 		return Response.Battery(
-			levelPercent = level,
+			milliVolts = milliVolts,
 			usedStorageKb = usedKb,
 			totalStorageKb = totalKb,
 		)

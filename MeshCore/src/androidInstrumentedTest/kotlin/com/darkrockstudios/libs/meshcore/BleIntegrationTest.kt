@@ -100,8 +100,8 @@ class BleIntegrationTest {
 		// Get battery with retry
 		Log.i(TAG, "Getting battery...")
 		val battery = withRetry("getBattery") { connection!!.getBattery() }
-		Log.i(TAG, "Battery: ${battery.levelPercent}%")
-		assertTrue(battery.levelPercent >= 0, "Battery level should be >= 0")
+		Log.i(TAG, "Battery: ${battery.milliVolts}mV (${battery.levelPercent}%)")
+		assertTrue(battery.milliVolts >= 0, "Battery millivolts should be >= 0")
 	}
 
 	private suspend fun <T> withRetry(

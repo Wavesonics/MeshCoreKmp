@@ -190,7 +190,7 @@ fun ConnectedScreen(
 				Card(modifier = Modifier.fillMaxWidth()) {
 					Column(modifier = Modifier.padding(16.dp)) {
 						Text("Battery", style = MaterialTheme.typography.titleMedium)
-						Text("Level: ${battery.levelPercent}%")
+						Text("Level: ${battery.levelPercent}% (${battery.milliVolts}mV)")
 						battery.usedStorageKb?.let { used ->
 							battery.totalStorageKb?.let { total ->
 								Text("Storage: ${used}KB / ${total}KB")
