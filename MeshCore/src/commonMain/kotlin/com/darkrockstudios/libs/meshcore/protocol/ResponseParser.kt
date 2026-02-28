@@ -154,7 +154,7 @@ object ResponseParser {
 		// Minimum size: 1 (type) + 32 (pubkey) + 1 (type) + 1 (flags) + 1 (pathLen) + 64 (path) + 32 (name) = 132
 		if (data.size < 132) return null
 
-		val publicKey = data.copyOfRange(1, 33).toHexString()
+		val publicKey = data.copyOfRange(1, 33)
 		val contactType = data[33].toInt() and 0xFF
 		val flags = data[34].toInt() and 0xFF
 		val outPathLen = data[35].toInt() // signed
