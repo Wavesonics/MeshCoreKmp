@@ -342,34 +342,33 @@ class DeviceConnection internal constructor(
 		)
 	}
 
-	suspend fun removeContact(publicKeyPrefix: ByteArray) {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+	suspend fun removeContact(publicKey: ByteArray) {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
 		commandQueue.execute<Response.Ok>(
-			CommandSerializer.removeContact(publicKeyPrefix),
+			CommandSerializer.removeContact(publicKey),
 			config.commandTimeout,
 		)
 	}
 
-	suspend fun resetPath(publicKeyPrefix: ByteArray) {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+	suspend fun resetPath(publicKey: ByteArray) {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
 		commandQueue.execute<Response.Ok>(
-			CommandSerializer.resetPath(publicKeyPrefix),
+			CommandSerializer.resetPath(publicKey),
 			config.commandTimeout,
 		)
 	}
 
-	suspend fun shareContact(publicKeyPrefix: ByteArray) {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+	suspend fun shareContact(publicKey: ByteArray) {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
 		commandQueue.execute<Response.Ok>(
-			CommandSerializer.shareContact(publicKeyPrefix),
+			CommandSerializer.shareContact(publicKey),
 			config.commandTimeout,
 		)
 	}
 
-	suspend fun exportContact(publicKeyPrefix: ByteArray): String {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+	suspend fun exportContact(publicKey: ByteArray? = null): String {
 		val resp = commandQueue.execute<Response.ContactUri>(
-			CommandSerializer.exportContact(publicKeyPrefix),
+			CommandSerializer.exportContact(publicKey),
 			config.commandTimeout,
 		)
 		return resp.uri
@@ -545,23 +544,30 @@ class DeviceConnection internal constructor(
 	}
 
 	suspend fun setOtherParams(
-		advertType: Int,
+		manualAddContacts: Boolean,
 		telemetryModeBase: Int = 0,
 		telemetryModeLoc: Int = 0,
 		telemetryModeEnv: Int = 0,
+		advLocPolicy: Int = 0,
 	) {
 		commandQueue.execute<Response.Ok>(
-			CommandSerializer.setOtherParams(advertType, telemetryModeBase, telemetryModeLoc, telemetryModeEnv),
+			CommandSerializer.setOtherParams(
+				manualAddContacts,
+				telemetryModeBase,
+				telemetryModeLoc,
+				telemetryModeEnv,
+				advLocPolicy
+			),
 			config.commandTimeout,
 		)
 	}
 
 	// --- Auth ---
 
-	suspend fun sendLogin(publicKeyPrefix: ByteArray, password: String): MessageSentConfirmation {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+	suspend fun sendLogin(publicKey: ByteArray, password: String): MessageSentConfirmation {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
 		val resp = commandQueue.execute<Response>(
-			CommandSerializer.sendLogin(publicKeyPrefix, password),
+			CommandSerializer.sendLogin(publicKey, password),
 			config.commandTimeout,
 		)
 		return when (resp) {
@@ -583,20 +589,20 @@ class DeviceConnection internal constructor(
 		}
 	}
 
-	suspend fun sendLogout(publicKeyPrefix: ByteArray) {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+	suspend fun sendLogout(publicKey: ByteArray) {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
 		commandQueue.execute<Response.Ok>(
-			CommandSerializer.sendLogout(publicKeyPrefix),
+			CommandSerializer.sendLogout(publicKey),
 			config.commandTimeout,
 		)
 	}
 
 	// --- Path Discovery ---
 
-	suspend fun sendPathDiscovery(publicKeyPrefix: ByteArray): MessageSentConfirmation {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+	suspend fun sendPathDiscovery(publicKey: ByteArray): MessageSentConfirmation {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
 		val resp = commandQueue.execute<Response>(
-			CommandSerializer.sendPathDiscovery(publicKeyPrefix),
+			CommandSerializer.sendPathDiscovery(publicKey),
 			config.commandTimeout,
 		)
 		return when (resp) {
@@ -627,9 +633,14 @@ class DeviceConnection internal constructor(
 		return (resp.value ?: 0) > 0
 	}
 
-	suspend fun sendTrace(auth: Int, tag: Int, flags: Int, path: ByteArray = ByteArray(0)): MessageSentConfirmation {
+	suspend fun sendTrace(
+		tag: Int,
+		authCode: Int,
+		flags: Int,
+		path: ByteArray = ByteArray(0)
+	): MessageSentConfirmation {
 		val resp = commandQueue.execute<Response>(
-			CommandSerializer.sendTrace(auth, tag, flags, path),
+			CommandSerializer.sendTrace(tag, authCode, flags, path),
 			config.commandTimeout,
 		)
 		return when (resp) {
@@ -683,9 +694,9 @@ class DeviceConnection internal constructor(
 		)
 	}
 
-	suspend fun signFinish(timeout: Int, size: Int): ByteArray {
+	suspend fun signFinish(): ByteArray {
 		val resp = commandQueue.execute<Response.Signature>(
-			CommandSerializer.signFinish(timeout, size),
+			CommandSerializer.signFinish(),
 			config.commandTimeout,
 		)
 		return resp.signatureData
@@ -723,10 +734,10 @@ class DeviceConnection internal constructor(
 		}
 	}
 
-	suspend fun sendTelemetryRequest(publicKeyPrefix: ByteArray): MessageSentConfirmation {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+	suspend fun sendTelemetryRequest(publicKey: ByteArray): MessageSentConfirmation {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
 		val resp = commandQueue.execute<Response>(
-			CommandSerializer.sendTelemetryRequest(publicKeyPrefix),
+			CommandSerializer.sendTelemetryRequest(publicKey),
 			config.commandTimeout,
 		)
 		return when (resp) {
@@ -748,10 +759,10 @@ class DeviceConnection internal constructor(
 		}
 	}
 
-	suspend fun sendStatusRequest(publicKeyPrefix: ByteArray): MessageSentConfirmation {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+	suspend fun sendStatusRequest(publicKey: ByteArray): MessageSentConfirmation {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
 		val resp = commandQueue.execute<Response>(
-			CommandSerializer.sendStatusRequest(publicKeyPrefix),
+			CommandSerializer.sendStatusRequest(publicKey),
 			config.commandTimeout,
 		)
 		return when (resp) {

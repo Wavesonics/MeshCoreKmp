@@ -107,7 +107,7 @@ object CommandSerializer {
 		return buffer
 	}
 
-	// --- Phase 1: Contact Management ---
+	// --- Contact Management ---
 
 	fun addContact(publicKey: ByteArray, name: String, type: Int = 0, flags: Int = 0): ByteArray {
 		require(publicKey.size == 32) { "Public key must be 32 bytes" }
@@ -144,36 +144,39 @@ object CommandSerializer {
 		return buffer
 	}
 
-	fun removeContact(publicKeyPrefix: ByteArray): ByteArray {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
-		val buffer = ByteArray(7)
+	fun removeContact(publicKey: ByteArray): ByteArray {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
+		val buffer = ByteArray(33)
 		buffer[0] = CommandCode.REMOVE_CONTACT.toByte()
-		publicKeyPrefix.copyInto(buffer, 1)
+		publicKey.copyInto(buffer, 1)
 		return buffer
 	}
 
-	fun resetPath(publicKeyPrefix: ByteArray): ByteArray {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
-		val buffer = ByteArray(7)
+	fun resetPath(publicKey: ByteArray): ByteArray {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
+		val buffer = ByteArray(33)
 		buffer[0] = CommandCode.RESET_PATH.toByte()
-		publicKeyPrefix.copyInto(buffer, 1)
+		publicKey.copyInto(buffer, 1)
 		return buffer
 	}
 
-	fun shareContact(publicKeyPrefix: ByteArray): ByteArray {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
-		val buffer = ByteArray(7)
+	fun shareContact(publicKey: ByteArray): ByteArray {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
+		val buffer = ByteArray(33)
 		buffer[0] = CommandCode.SHARE_CONTACT.toByte()
-		publicKeyPrefix.copyInto(buffer, 1)
+		publicKey.copyInto(buffer, 1)
 		return buffer
 	}
 
-	fun exportContact(publicKeyPrefix: ByteArray): ByteArray {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
-		val buffer = ByteArray(7)
-		buffer[0] = CommandCode.EXPORT_CONTACT.toByte()
-		publicKeyPrefix.copyInto(buffer, 1)
-		return buffer
+	fun exportContact(publicKey: ByteArray? = null): ByteArray {
+		if (publicKey != null) {
+			require(publicKey.size == 32) { "Public key must be 32 bytes" }
+			val buffer = ByteArray(33)
+			buffer[0] = CommandCode.EXPORT_CONTACT.toByte()
+			publicKey.copyInto(buffer, 1)
+			return buffer
+		}
+		return byteArrayOf(CommandCode.EXPORT_CONTACT.toByte())
 	}
 
 	fun importContact(cardData: ByteArray): ByteArray {
@@ -189,7 +192,7 @@ object CommandSerializer {
 	fun getAutoAddConfig(): ByteArray =
 		byteArrayOf(CommandCode.GET_AUTOADD_CONFIG.toByte())
 
-	// --- Phase 1: Remote Command ---
+	// --- Remote Command ---
 
 	fun sendRemoteCommand(
 		publicKeyPrefix: ByteArray,
@@ -209,12 +212,13 @@ object CommandSerializer {
 		return buffer
 	}
 
-	// --- Phase 1: Advertisement ---
+	// --- Advertisement ---
 
 	fun sendAdvert(flood: Boolean = false): ByteArray =
-		byteArrayOf(CommandCode.SEND_ADVERT.toByte(), if (flood) 0x01 else 0x00)
+		if (flood) byteArrayOf(CommandCode.SEND_ADVERT.toByte(), 0x01)
+		else byteArrayOf(CommandCode.SEND_ADVERT.toByte())
 
-	// --- Phase 2: Device Configuration ---
+	// --- Device Configuration ---
 
 	fun setName(name: String): ByteArray {
 		val nameBytes = name.encodeToByteArray()
@@ -225,15 +229,20 @@ object CommandSerializer {
 	}
 
 	fun setCoords(latitude: Double, longitude: Double): ByteArray {
-		val buffer = ByteArray(9)
+		val buffer = ByteArray(13) // 1 cmd + 4 lat + 4 lon + 4 altitude(0)
 		buffer[0] = CommandCode.SET_COORDS.toByte()
 		putInt32LE(buffer, 1, (latitude * 1_000_000).toInt())
 		putInt32LE(buffer, 5, (longitude * 1_000_000).toInt())
+		// bytes 9-12: altitude (zeros by default)
 		return buffer
 	}
 
-	fun setTxPower(power: Int): ByteArray =
-		byteArrayOf(CommandCode.SET_TX_POWER.toByte(), power.toByte())
+	fun setTxPower(power: Int): ByteArray {
+		val buffer = ByteArray(5)
+		buffer[0] = CommandCode.SET_TX_POWER.toByte()
+		putUInt32LE(buffer, 1, power.toLong())
+		return buffer
+	}
 
 	fun setDevicePin(pin: Int): ByteArray {
 		val buffer = ByteArray(5)
@@ -259,58 +268,72 @@ object CommandSerializer {
 		return buffer
 	}
 
-	fun setTuning(rxDelay: Int, afFactor: Int): ByteArray =
-		byteArrayOf(CommandCode.SET_TUNING.toByte(), rxDelay.toByte(), afFactor.toByte())
+	fun setTuning(rxDelay: Int, afFactor: Int): ByteArray {
+		val buffer = ByteArray(11) // 1 cmd + 4 rxDelay + 4 afFactor + 1 + 1 padding
+		buffer[0] = CommandCode.SET_TUNING.toByte()
+		putUInt32LE(buffer, 1, rxDelay.toLong())
+		putUInt32LE(buffer, 5, afFactor.toLong())
+		// bytes 9-10: zero padding
+		return buffer
+	}
 
-	fun reboot(): ByteArray =
-		byteArrayOf(CommandCode.REBOOT.toByte())
+	fun reboot(): ByteArray {
+		val text = "reboot".encodeToByteArray()
+		val buffer = ByteArray(1 + text.size)
+		buffer[0] = CommandCode.REBOOT.toByte()
+		text.copyInto(buffer, 1)
+		return buffer
+	}
 
 	fun factoryReset(): ByteArray =
 		byteArrayOf(CommandCode.FACTORY_RESET.toByte())
 
 	fun setOtherParams(
-		advertType: Int,
+		manualAddContacts: Boolean,
 		telemetryModeBase: Int = 0,
 		telemetryModeLoc: Int = 0,
 		telemetryModeEnv: Int = 0,
+		advLocPolicy: Int = 0,
 	): ByteArray {
 		val telemetryByte = (telemetryModeBase and 0x03) or
 				((telemetryModeLoc and 0x03) shl 2) or
 				((telemetryModeEnv and 0x03) shl 4)
 		return byteArrayOf(
 			CommandCode.SET_OTHER_PARAMS.toByte(),
-			advertType.toByte(),
+			if (manualAddContacts) 0x01 else 0x00,
 			telemetryByte.toByte(),
+			advLocPolicy.toByte(),
 		)
 	}
 
-	// --- Phase 2: Auth ---
+	// --- Auth ---
 
-	fun sendLogin(publicKeyPrefix: ByteArray, password: String): ByteArray {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+	fun sendLogin(publicKey: ByteArray, password: String): ByteArray {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
 		val pwdBytes = password.encodeToByteArray()
-		val buffer = ByteArray(7 + pwdBytes.size)
+		val buffer = ByteArray(33 + pwdBytes.size)
 		buffer[0] = CommandCode.SEND_LOGIN.toByte()
-		publicKeyPrefix.copyInto(buffer, 1)
-		pwdBytes.copyInto(buffer, 7)
+		publicKey.copyInto(buffer, 1)
+		pwdBytes.copyInto(buffer, 33)
 		return buffer
 	}
 
-	fun sendLogout(publicKeyPrefix: ByteArray): ByteArray {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
-		val buffer = ByteArray(7)
+	fun sendLogout(publicKey: ByteArray): ByteArray {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
+		val buffer = ByteArray(33)
 		buffer[0] = CommandCode.SEND_LOGOUT.toByte()
-		publicKeyPrefix.copyInto(buffer, 1)
+		publicKey.copyInto(buffer, 1)
 		return buffer
 	}
 
-	// --- Phase 2: Path Discovery ---
+	// --- Path Discovery ---
 
-	fun sendPathDiscovery(publicKeyPrefix: ByteArray): ByteArray {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
-		val buffer = ByteArray(7)
+	fun sendPathDiscovery(publicKey: ByteArray): ByteArray {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
+		val buffer = ByteArray(34) // 1 cmd + 1 reserved + 32 key
 		buffer[0] = CommandCode.SEND_PATH_DISCOVERY.toByte()
-		publicKeyPrefix.copyInto(buffer, 1)
+		buffer[1] = 0x00
+		publicKey.copyInto(buffer, 2)
 		return buffer
 	}
 
@@ -322,17 +345,17 @@ object CommandSerializer {
 		return buffer
 	}
 
-	fun sendTrace(auth: Int, tag: Int, flags: Int, path: ByteArray = ByteArray(0)): ByteArray {
-		val buffer = ByteArray(4 + path.size)
+	fun sendTrace(tag: Int, authCode: Int, flags: Int, path: ByteArray = ByteArray(0)): ByteArray {
+		val buffer = ByteArray(10 + path.size) // 1 cmd + 4 tag + 4 auth + 1 flags + path
 		buffer[0] = CommandCode.SEND_TRACE.toByte()
-		buffer[1] = auth.toByte()
-		buffer[2] = tag.toByte()
-		buffer[3] = flags.toByte()
-		path.copyInto(buffer, 4)
+		putUInt32LE(buffer, 1, tag.toLong() and 0xFFFFFFFFL)
+		putUInt32LE(buffer, 5, authCode.toLong() and 0xFFFFFFFFL)
+		buffer[9] = flags.toByte()
+		path.copyInto(buffer, 10)
 		return buffer
 	}
 
-	// --- Phase 3: Cryptography ---
+	// --- Cryptography ---
 
 	fun exportPrivateKey(): ByteArray =
 		byteArrayOf(CommandCode.EXPORT_PRIVATE_KEY.toByte())
@@ -355,50 +378,45 @@ object CommandSerializer {
 		return buffer
 	}
 
-	fun signFinish(timeout: Int, size: Int): ByteArray {
-		val buffer = ByteArray(5)
-		buffer[0] = CommandCode.SIGN_FINISH.toByte()
-		putUInt16LE(buffer, 1, timeout)
-		putUInt16LE(buffer, 3, size)
-		return buffer
-	}
+	fun signFinish(): ByteArray =
+		byteArrayOf(CommandCode.SIGN_FINISH.toByte())
 
-	// --- Phase 3: Custom Variables ---
+	// --- Custom Variables ---
 
 	fun getCustomVars(): ByteArray =
 		byteArrayOf(CommandCode.GET_CUSTOM_VARS.toByte())
 
 	fun setCustomVar(key: String, value: String): ByteArray {
-		val payload = "$key=$value".encodeToByteArray()
+		val payload = "$key:$value".encodeToByteArray()
 		val buffer = ByteArray(1 + payload.size)
 		buffer[0] = CommandCode.SET_CUSTOM_VAR.toByte()
 		payload.copyInto(buffer, 1)
 		return buffer
 	}
 
-	// --- Phase 3: Telemetry ---
+	// --- Telemetry ---
 
 	fun getSelfTelemetry(): ByteArray =
-		byteArrayOf(CommandCode.GET_TELEMETRY.toByte(), 0x00)
+		byteArrayOf(CommandCode.GET_TELEMETRY.toByte(), 0x00, 0x00, 0x00)
 
-	fun sendTelemetryRequest(publicKeyPrefix: ByteArray): ByteArray {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
-		val buffer = ByteArray(8)
+	fun sendTelemetryRequest(publicKey: ByteArray): ByteArray {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
+		val buffer = ByteArray(36) // 1 cmd + 3 zeros + 32 key
 		buffer[0] = CommandCode.GET_TELEMETRY.toByte()
-		buffer[1] = 0x01 // remote request
-		publicKeyPrefix.copyInto(buffer, 2)
+		// buffer[1..3] = 0x00 (already zero)
+		publicKey.copyInto(buffer, 4)
 		return buffer
 	}
 
-	fun sendStatusRequest(publicKeyPrefix: ByteArray): ByteArray {
-		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
-		val buffer = ByteArray(7)
+	fun sendStatusRequest(publicKey: ByteArray): ByteArray {
+		require(publicKey.size == 32) { "Public key must be 32 bytes" }
+		val buffer = ByteArray(33) // 1 cmd + 32 key
 		buffer[0] = CommandCode.SEND_STATUS_REQ.toByte()
-		publicKeyPrefix.copyInto(buffer, 1)
+		publicKey.copyInto(buffer, 1)
 		return buffer
 	}
 
-	// --- Phase 3: Control Data ---
+	// --- Control Data ---
 
 	fun sendControlData(type: Int, payload: ByteArray): ByteArray {
 		val buffer = ByteArray(2 + payload.size)
@@ -408,7 +426,7 @@ object CommandSerializer {
 		return buffer
 	}
 
-	// --- Phase 3: Anonymous Requests ---
+	// --- Anonymous Requests ---
 
 	fun sendAnonymousRequest(publicKey: ByteArray, requestType: Int, payload: ByteArray = ByteArray(0)): ByteArray {
 		require(publicKey.size == 32) { "Public key must be 32 bytes" }
@@ -420,13 +438,13 @@ object CommandSerializer {
 		return buffer
 	}
 
-	// --- Phase 3: Config Queries ---
+	// --- Config Queries ---
 
 	fun getAllowedRepeatFreq(): ByteArray =
 		byteArrayOf(CommandCode.GET_ALLOWED_REPEAT_FREQ.toByte())
 
 	fun setPathHashMode(mode: Int): ByteArray =
-		byteArrayOf(CommandCode.SET_PATH_HASH_MODE.toByte(), mode.toByte())
+		byteArrayOf(CommandCode.SET_PATH_HASH_MODE.toByte(), 0x00, mode.toByte())
 
 	// --- Byte utilities ---
 

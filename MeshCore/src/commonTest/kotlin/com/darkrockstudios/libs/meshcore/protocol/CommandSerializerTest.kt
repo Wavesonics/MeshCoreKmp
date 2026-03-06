@@ -148,6 +148,24 @@ class CommandSerializerTest {
 	}
 
 	@Test
+	fun getDeviceTime() {
+		val result = CommandSerializer.getDeviceTime()
+		assertContentEquals(byteArrayOf(0x05), result)
+	}
+
+	@Test
+	fun setDeviceTime() {
+		val result = CommandSerializer.setDeviceTime(1620000000L)
+		assertEquals(5, result.size)
+		assertEquals(0x06.toByte(), result[0])
+		// 1620000000 = 0x608F3D00 LE: 00 3D 8F 60
+		assertEquals(0x00.toByte(), result[1])
+		assertEquals(0x3D.toByte(), result[2])
+		assertEquals(0x8F.toByte(), result[3])
+		assertEquals(0x60.toByte(), result[4])
+	}
+
+	@Test
 	fun getBattery() {
 		val result = CommandSerializer.getBattery()
 		assertContentEquals(byteArrayOf(0x14), result)
@@ -251,42 +269,55 @@ class CommandSerializerTest {
 
 	@Test
 	fun removeContact() {
-		val prefix = byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05, 0x06)
-		val result = CommandSerializer.removeContact(prefix)
-		assertEquals(7, result.size)
+		val publicKey = ByteArray(32) { it.toByte() }
+		val result = CommandSerializer.removeContact(publicKey)
+		assertEquals(33, result.size) // 1 cmd + 32 key
 		assertEquals(0x0F.toByte(), result[0])
-		assertEquals(0x01.toByte(), result[1])
-		assertEquals(0x06.toByte(), result[6])
+		assertEquals(0x00.toByte(), result[1])
+		assertEquals(0x1F.toByte(), result[32])
 	}
 
 	@Test
-	fun removeContact_invalidPrefixSize() {
+	fun removeContact_invalidKeySize() {
 		assertFailsWith<IllegalArgumentException> {
-			CommandSerializer.removeContact(ByteArray(4))
+			CommandSerializer.removeContact(ByteArray(6))
 		}
 	}
 
 	@Test
 	fun resetPath() {
-		val prefix = byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05, 0x06)
-		val result = CommandSerializer.resetPath(prefix)
-		assertEquals(7, result.size)
+		val publicKey = ByteArray(32) { it.toByte() }
+		val result = CommandSerializer.resetPath(publicKey)
+		assertEquals(33, result.size)
 		assertEquals(0x0D.toByte(), result[0])
+		assertEquals(0x00.toByte(), result[1])
+		assertEquals(0x1F.toByte(), result[32])
 	}
 
 	@Test
 	fun shareContact() {
-		val prefix = byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05, 0x06)
-		val result = CommandSerializer.shareContact(prefix)
-		assertEquals(7, result.size)
+		val publicKey = ByteArray(32) { it.toByte() }
+		val result = CommandSerializer.shareContact(publicKey)
+		assertEquals(33, result.size)
 		assertEquals(0x10.toByte(), result[0])
+		assertEquals(0x00.toByte(), result[1])
+		assertEquals(0x1F.toByte(), result[32])
 	}
 
 	@Test
-	fun exportContact() {
-		val prefix = byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05, 0x06)
-		val result = CommandSerializer.exportContact(prefix)
-		assertEquals(7, result.size)
+	fun exportContact_withKey() {
+		val publicKey = ByteArray(32) { it.toByte() }
+		val result = CommandSerializer.exportContact(publicKey)
+		assertEquals(33, result.size)
+		assertEquals(0x11.toByte(), result[0])
+		assertEquals(0x00.toByte(), result[1])
+		assertEquals(0x1F.toByte(), result[32])
+	}
+
+	@Test
+	fun exportContact_noKey_exportsSelf() {
+		val result = CommandSerializer.exportContact()
+		assertEquals(1, result.size)
 		assertEquals(0x11.toByte(), result[0])
 	}
 
@@ -336,7 +367,7 @@ class CommandSerializerTest {
 	@Test
 	fun sendAdvert_noFlood() {
 		val result = CommandSerializer.sendAdvert(false)
-		assertContentEquals(byteArrayOf(0x07, 0x00), result)
+		assertContentEquals(byteArrayOf(0x07), result)
 	}
 
 	@Test
@@ -358,14 +389,25 @@ class CommandSerializerTest {
 	@Test
 	fun setCoords() {
 		val result = CommandSerializer.setCoords(45.5, -122.5)
-		assertEquals(9, result.size)
+		assertEquals(13, result.size) // 1 cmd + 4 lat + 4 lon + 4 altitude
 		assertEquals(0x0E.toByte(), result[0])
+		// Verify altitude bytes are zero
+		assertEquals(0x00.toByte(), result[9])
+		assertEquals(0x00.toByte(), result[10])
+		assertEquals(0x00.toByte(), result[11])
+		assertEquals(0x00.toByte(), result[12])
 	}
 
 	@Test
 	fun setTxPower() {
 		val result = CommandSerializer.setTxPower(20)
-		assertContentEquals(byteArrayOf(0x0C, 0x14), result)
+		assertEquals(5, result.size) // 1 cmd + 4 bytes LE
+		assertEquals(0x0C.toByte(), result[0])
+		// 20 = 0x14 LE: 14 00 00 00
+		assertEquals(0x14.toByte(), result[1])
+		assertEquals(0x00.toByte(), result[2])
+		assertEquals(0x00.toByte(), result[3])
+		assertEquals(0x00.toByte(), result[4])
 	}
 
 	@Test
@@ -391,13 +433,34 @@ class CommandSerializerTest {
 	@Test
 	fun setTuning() {
 		val result = CommandSerializer.setTuning(10, 20)
-		assertContentEquals(byteArrayOf(0x15, 0x0A, 0x14), result)
+		assertEquals(11, result.size) // 1 cmd + 4 rxDelay + 4 afFactor + 2 padding
+		assertEquals(0x15.toByte(), result[0])
+		// rxDelay=10 LE: 0A 00 00 00
+		assertEquals(0x0A.toByte(), result[1])
+		assertEquals(0x00.toByte(), result[2])
+		assertEquals(0x00.toByte(), result[3])
+		assertEquals(0x00.toByte(), result[4])
+		// afFactor=20 LE: 14 00 00 00
+		assertEquals(0x14.toByte(), result[5])
+		assertEquals(0x00.toByte(), result[6])
+		assertEquals(0x00.toByte(), result[7])
+		assertEquals(0x00.toByte(), result[8])
+		// padding zeros
+		assertEquals(0x00.toByte(), result[9])
+		assertEquals(0x00.toByte(), result[10])
 	}
 
 	@Test
 	fun reboot() {
 		val result = CommandSerializer.reboot()
-		assertContentEquals(byteArrayOf(0x13), result)
+		assertEquals(7, result.size) // 1 cmd + 6 "reboot"
+		assertEquals(0x13.toByte(), result[0])
+		assertEquals('r'.code.toByte(), result[1])
+		assertEquals('e'.code.toByte(), result[2])
+		assertEquals('b'.code.toByte(), result[3])
+		assertEquals('o'.code.toByte(), result[4])
+		assertEquals('o'.code.toByte(), result[5])
+		assertEquals('t'.code.toByte(), result[6])
 	}
 
 	@Test
@@ -409,46 +472,67 @@ class CommandSerializerTest {
 	@Test
 	fun setOtherParams() {
 		val result = CommandSerializer.setOtherParams(
-			advertType = 2,
+			manualAddContacts = false,
 			telemetryModeBase = 1,
 			telemetryModeLoc = 2,
 			telemetryModeEnv = 3,
+			advLocPolicy = 2,
 		)
-		assertEquals(3, result.size)
+		assertEquals(4, result.size) // 1 cmd + 1 manual_add + 1 telemetry + 1 advLocPolicy
 		assertEquals(0x26.toByte(), result[0])
-		assertEquals(0x02.toByte(), result[1]) // advertType
+		assertEquals(0x00.toByte(), result[1]) // manualAddContacts = false
 		// telemetry = 1 | (2 << 2) | (3 << 4) = 1 | 8 | 48 = 57 = 0x39
 		assertEquals(0x39.toByte(), result[2])
+		assertEquals(0x02.toByte(), result[3]) // advLocPolicy
+	}
+
+	@Test
+	fun setOtherParams_manualAddEnabled() {
+		val result = CommandSerializer.setOtherParams(manualAddContacts = true)
+		assertEquals(0x01.toByte(), result[1]) // manualAddContacts = true
 	}
 
 	// --- Auth ---
 
 	@Test
 	fun sendLogin() {
-		val prefix = byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05, 0x06)
-		val result = CommandSerializer.sendLogin(prefix, "pass")
-		assertEquals(11, result.size)
+		val publicKey = ByteArray(32) { it.toByte() }
+		val result = CommandSerializer.sendLogin(publicKey, "pass")
+		assertEquals(37, result.size) // 1 cmd + 32 key + 4 "pass"
 		assertEquals(0x1A.toByte(), result[0])
-		assertEquals(0x01.toByte(), result[1])
-		assertEquals('p'.code.toByte(), result[7])
+		assertEquals(0x00.toByte(), result[1]) // first key byte
+		assertEquals(0x1F.toByte(), result[32]) // last key byte
+		assertEquals('p'.code.toByte(), result[33])
+	}
+
+	@Test
+	fun sendLogin_invalidKeySize() {
+		assertFailsWith<IllegalArgumentException> {
+			CommandSerializer.sendLogin(ByteArray(6), "pass")
+		}
 	}
 
 	@Test
 	fun sendLogout() {
-		val prefix = byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05, 0x06)
-		val result = CommandSerializer.sendLogout(prefix)
-		assertEquals(7, result.size)
+		val publicKey = ByteArray(32) { it.toByte() }
+		val result = CommandSerializer.sendLogout(publicKey)
+		assertEquals(33, result.size) // 1 cmd + 32 key
 		assertEquals(0x1D.toByte(), result[0])
+		assertEquals(0x00.toByte(), result[1])
+		assertEquals(0x1F.toByte(), result[32])
 	}
 
 	// --- Path Discovery ---
 
 	@Test
 	fun sendPathDiscovery() {
-		val prefix = byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05, 0x06)
-		val result = CommandSerializer.sendPathDiscovery(prefix)
-		assertEquals(7, result.size)
+		val publicKey = ByteArray(32) { it.toByte() }
+		val result = CommandSerializer.sendPathDiscovery(publicKey)
+		assertEquals(34, result.size) // 1 cmd + 1 reserved + 32 key
 		assertEquals(0x34.toByte(), result[0])
+		assertEquals(0x00.toByte(), result[1]) // reserved
+		assertEquals(0x00.toByte(), result[2]) // first key byte
+		assertEquals(0x1F.toByte(), result[33]) // last key byte
 	}
 
 	@Test
@@ -461,21 +545,30 @@ class CommandSerializerTest {
 
 	@Test
 	fun sendTrace() {
-		val result = CommandSerializer.sendTrace(1, 2, 3)
-		assertEquals(4, result.size)
+		val result = CommandSerializer.sendTrace(tag = 12345, authCode = 67890, flags = 1)
+		assertEquals(10, result.size) // 1 cmd + 4 tag + 4 auth + 1 flags
 		assertEquals(0x24.toByte(), result[0])
-		assertEquals(0x01.toByte(), result[1])
-		assertEquals(0x02.toByte(), result[2])
-		assertEquals(0x03.toByte(), result[3])
+		// tag=12345 (0x3039) LE: 39 30 00 00
+		assertEquals(0x39.toByte(), result[1])
+		assertEquals(0x30.toByte(), result[2])
+		assertEquals(0x00.toByte(), result[3])
+		assertEquals(0x00.toByte(), result[4])
+		// authCode=67890 (0x10932) LE: 32 09 01 00
+		assertEquals(0x32.toByte(), result[5])
+		assertEquals(0x09.toByte(), result[6])
+		assertEquals(0x01.toByte(), result[7])
+		assertEquals(0x00.toByte(), result[8])
+		// flags
+		assertEquals(0x01.toByte(), result[9])
 	}
 
 	@Test
 	fun sendTrace_withPath() {
 		val path = byteArrayOf(0xAA.toByte(), 0xBB.toByte())
-		val result = CommandSerializer.sendTrace(1, 2, 3, path)
-		assertEquals(6, result.size)
-		assertEquals(0xAA.toByte(), result[4])
-		assertEquals(0xBB.toByte(), result[5])
+		val result = CommandSerializer.sendTrace(tag = 1, authCode = 2, flags = 0, path = path)
+		assertEquals(12, result.size) // 10 + 2 path
+		assertEquals(0xAA.toByte(), result[10])
+		assertEquals(0xBB.toByte(), result[11])
 	}
 
 	// --- Cryptography ---
@@ -520,15 +613,9 @@ class CommandSerializerTest {
 
 	@Test
 	fun signFinish() {
-		val result = CommandSerializer.signFinish(30, 256)
-		assertEquals(5, result.size)
+		val result = CommandSerializer.signFinish()
+		assertEquals(1, result.size)
 		assertEquals(0x23.toByte(), result[0])
-		// timeout=30 LE: 1E 00
-		assertEquals(0x1E.toByte(), result[1])
-		assertEquals(0x00.toByte(), result[2])
-		// size=256 LE: 00 01
-		assertEquals(0x00.toByte(), result[3])
-		assertEquals(0x01.toByte(), result[4])
 	}
 
 	// --- Custom Variables ---
@@ -542,7 +629,7 @@ class CommandSerializerTest {
 	@Test
 	fun setCustomVar() {
 		val result = CommandSerializer.setCustomVar("foo", "bar")
-		val expected = byteArrayOf(0x29) + "foo=bar".encodeToByteArray()
+		val expected = byteArrayOf(0x29) + "foo:bar".encodeToByteArray()
 		assertContentEquals(expected, result)
 	}
 
@@ -551,25 +638,44 @@ class CommandSerializerTest {
 	@Test
 	fun getSelfTelemetry() {
 		val result = CommandSerializer.getSelfTelemetry()
-		assertContentEquals(byteArrayOf(0x27, 0x00), result)
+		assertContentEquals(byteArrayOf(0x27, 0x00, 0x00, 0x00), result)
 	}
 
 	@Test
 	fun sendTelemetryRequest() {
-		val prefix = byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05, 0x06)
-		val result = CommandSerializer.sendTelemetryRequest(prefix)
-		assertEquals(8, result.size)
+		val publicKey = ByteArray(32) { it.toByte() }
+		val result = CommandSerializer.sendTelemetryRequest(publicKey)
+		assertEquals(36, result.size) // 4 header + 32 key
 		assertEquals(0x27.toByte(), result[0])
-		assertEquals(0x01.toByte(), result[1])
-		assertEquals(0x01.toByte(), result[2])
+		assertEquals(0x00.toByte(), result[1])
+		assertEquals(0x00.toByte(), result[2])
+		assertEquals(0x00.toByte(), result[3])
+		assertEquals(0x00.toByte(), result[4]) // first key byte
+		assertEquals(0x1F.toByte(), result[35]) // last key byte
+	}
+
+	@Test
+	fun sendTelemetryRequest_invalidKeySize() {
+		assertFailsWith<IllegalArgumentException> {
+			CommandSerializer.sendTelemetryRequest(ByteArray(6))
+		}
 	}
 
 	@Test
 	fun sendStatusRequest() {
-		val prefix = byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05, 0x06)
-		val result = CommandSerializer.sendStatusRequest(prefix)
-		assertEquals(7, result.size)
+		val publicKey = ByteArray(32) { it.toByte() }
+		val result = CommandSerializer.sendStatusRequest(publicKey)
+		assertEquals(33, result.size) // 1 cmd + 32 key
 		assertEquals(0x1B.toByte(), result[0])
+		assertEquals(0x00.toByte(), result[1]) // first key byte
+		assertEquals(0x1F.toByte(), result[32]) // last key byte
+	}
+
+	@Test
+	fun sendStatusRequest_invalidKeySize() {
+		assertFailsWith<IllegalArgumentException> {
+			CommandSerializer.sendStatusRequest(ByteArray(6))
+		}
 	}
 
 	// --- Control Data ---
@@ -608,6 +714,29 @@ class CommandSerializerTest {
 	@Test
 	fun setPathHashMode() {
 		val result = CommandSerializer.setPathHashMode(1)
-		assertContentEquals(byteArrayOf(0x3D, 0x01), result)
+		assertContentEquals(byteArrayOf(0x3D, 0x00, 0x01), result)
+	}
+
+	// --- Direct Message ---
+
+	@Test
+	fun sendDirectMessage() {
+		val prefix = byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05, 0x06)
+		val result = CommandSerializer.sendDirectMessage(prefix, "hello", 1620000000L)
+		assertEquals(0x02.toByte(), result[0]) // SEND_TXT_MSG
+		assertEquals(0x00.toByte(), result[1]) // subcode: text
+		assertEquals(0x00.toByte(), result[2]) // attempt
+		// prefix at offset 7
+		assertEquals(0x01.toByte(), result[7])
+		assertEquals(0x06.toByte(), result[12])
+		// "hello" at offset 13
+		assertEquals('h'.code.toByte(), result[13])
+	}
+
+	@Test
+	fun sendDirectMessage_invalidPrefix() {
+		assertFailsWith<IllegalArgumentException> {
+			CommandSerializer.sendDirectMessage(ByteArray(4), "test", 0L)
+		}
 	}
 }

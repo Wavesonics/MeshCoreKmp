@@ -384,8 +384,8 @@ object ResponseParser {
 	}
 
 	private fun parsePrivateKey(data: ByteArray): Response.PrivateKey? {
-		if (data.size < 33) return null
-		return Response.PrivateKey(data.copyOfRange(1, 33))
+		if (data.size < 65) return null // 1 type + 64 key bytes
+		return Response.PrivateKey(data.copyOfRange(1, 65))
 	}
 
 	private fun parseSignStart(data: ByteArray): Response.SignStartResponse {

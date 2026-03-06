@@ -531,19 +531,22 @@ class ResponseParserTest {
 
 	@Test
 	fun parse_privateKey() {
-		val data = ByteArray(33)
+		val data = ByteArray(65) // 1 type + 64 key bytes
 		data[0] = 0x0E
-		for (i in 1..32) data[i] = i.toByte()
+		for (i in 1..64) data[i] = i.toByte()
 		val result = ResponseParser.parse(data)
 		assertIs<Response.PrivateKey>(result)
-		assertEquals(32, result.key.size)
+		assertEquals(64, result.key.size)
 		assertEquals(0x01.toByte(), result.key[0])
-		assertEquals(0x20.toByte(), result.key[31])
+		assertEquals(0x40.toByte(), result.key[63])
 	}
 
 	@Test
 	fun parse_privateKey_tooShort() {
-		val data = byteArrayOf(0x0E, 0x01)
+		// 32 bytes is too short, need 64
+		val data = ByteArray(33)
+		data[0] = 0x0E
+		for (i in 1..32) data[i] = i.toByte()
 		assertNull(ResponseParser.parse(data))
 	}
 
