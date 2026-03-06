@@ -210,6 +210,126 @@ sealed class Response {
 		override fun hashCode(): Int = rawData.contentHashCode()
 	}
 
+	data class ContactUri(val uri: String) : Response()
+
+	data class PrivateKey(val key: ByteArray) : Response() {
+		override fun equals(other: Any?): Boolean {
+			if (this === other) return true
+			if (other !is PrivateKey) return false
+			return key.contentEquals(other.key)
+		}
+
+		override fun hashCode(): Int = key.contentHashCode()
+	}
+
+	data object Disabled : Response()
+
+	data class SignStartResponse(val sessionId: Int) : Response()
+
+	data class Signature(val signatureData: ByteArray) : Response() {
+		override fun equals(other: Any?): Boolean {
+			if (this === other) return true
+			if (other !is Signature) return false
+			return signatureData.contentEquals(other.signatureData)
+		}
+
+		override fun hashCode(): Int = signatureData.contentHashCode()
+	}
+
+	data class CustomVars(val data: String) : Response()
+
+	data class AutoAddConfig(val enabled: Boolean) : Response()
+
+	data class AllowedRepeatFreq(val frequencies: ByteArray) : Response() {
+		override fun equals(other: Any?): Boolean {
+			if (this === other) return true
+			if (other !is AllowedRepeatFreq) return false
+			return frequencies.contentEquals(other.frequencies)
+		}
+
+		override fun hashCode(): Int = frequencies.contentHashCode()
+	}
+
+	// Push event responses
+
+	data class LoginSuccess(val publicKeyPrefix: String) : Response()
+
+	data class LoginFail(val publicKeyPrefix: String) : Response()
+
+	data class StatusResponse(val publicKeyPrefix: String, val statusData: ByteArray) : Response() {
+		override fun equals(other: Any?): Boolean {
+			if (this === other) return true
+			if (other !is StatusResponse) return false
+			return publicKeyPrefix == other.publicKeyPrefix && statusData.contentEquals(other.statusData)
+		}
+
+		override fun hashCode(): Int {
+			var result = publicKeyPrefix.hashCode()
+			result = 31 * result + statusData.contentHashCode()
+			return result
+		}
+	}
+
+	data class TraceData(val rawData: ByteArray) : Response() {
+		override fun equals(other: Any?): Boolean {
+			if (this === other) return true
+			if (other !is TraceData) return false
+			return rawData.contentEquals(other.rawData)
+		}
+
+		override fun hashCode(): Int = rawData.contentHashCode()
+	}
+
+	data class NewAdvert(val rawData: ByteArray) : Response() {
+		override fun equals(other: Any?): Boolean {
+			if (this === other) return true
+			if (other !is NewAdvert) return false
+			return rawData.contentEquals(other.rawData)
+		}
+
+		override fun hashCode(): Int = rawData.contentHashCode()
+	}
+
+	data class TelemetryResponse(val publicKeyPrefix: String, val telemetryData: ByteArray) : Response() {
+		override fun equals(other: Any?): Boolean {
+			if (this === other) return true
+			if (other !is TelemetryResponse) return false
+			return publicKeyPrefix == other.publicKeyPrefix && telemetryData.contentEquals(other.telemetryData)
+		}
+
+		override fun hashCode(): Int {
+			var result = publicKeyPrefix.hashCode()
+			result = 31 * result + telemetryData.contentHashCode()
+			return result
+		}
+	}
+
+	data class PathDiscoveryResponse(val rawData: ByteArray) : Response() {
+		override fun equals(other: Any?): Boolean {
+			if (this === other) return true
+			if (other !is PathDiscoveryResponse) return false
+			return rawData.contentEquals(other.rawData)
+		}
+
+		override fun hashCode(): Int = rawData.contentHashCode()
+	}
+
+	data class ControlData(val type: Int, val payload: ByteArray) : Response() {
+		override fun equals(other: Any?): Boolean {
+			if (this === other) return true
+			if (other !is ControlData) return false
+			return type == other.type && payload.contentEquals(other.payload)
+		}
+
+		override fun hashCode(): Int {
+			var result = type
+			result = 31 * result + payload.contentHashCode()
+			return result
+		}
+	}
+
+	data class ContactDeleted(val publicKeyPrefix: String) : Response()
+
 	/**
 	 * A packet with a recognized type code but no dedicated parser.
 	 * Used for protocol codes we know about but haven't fully implemented yet,

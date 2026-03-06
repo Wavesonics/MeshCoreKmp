@@ -514,6 +514,187 @@ class ResponseParserTest {
 		assertEquals(3, result.rawData.size)
 	}
 
+	// --- New response type tests ---
+
+	@Test
+	fun parse_contactUri() {
+		val uri = "meshcore://contact/abc123"
+		val uriBytes = uri.encodeToByteArray()
+		val data = ByteArray(1 + uriBytes.size + 1) // +1 for null terminator
+		data[0] = 0x0B
+		uriBytes.copyInto(data, 1)
+		data[data.size - 1] = 0x00
+		val result = ResponseParser.parse(data)
+		assertIs<Response.ContactUri>(result)
+		assertEquals(uri, result.uri)
+	}
+
+	@Test
+	fun parse_privateKey() {
+		val data = ByteArray(33)
+		data[0] = 0x0E
+		for (i in 1..32) data[i] = i.toByte()
+		val result = ResponseParser.parse(data)
+		assertIs<Response.PrivateKey>(result)
+		assertEquals(32, result.key.size)
+		assertEquals(0x01.toByte(), result.key[0])
+		assertEquals(0x20.toByte(), result.key[31])
+	}
+
+	@Test
+	fun parse_privateKey_tooShort() {
+		val data = byteArrayOf(0x0E, 0x01)
+		assertNull(ResponseParser.parse(data))
+	}
+
+	@Test
+	fun parse_disabled() {
+		val data = byteArrayOf(0x0F)
+		val result = ResponseParser.parse(data)
+		assertIs<Response.Disabled>(result)
+	}
+
+	@Test
+	fun parse_signStart() {
+		val data = byteArrayOf(0x13, 0x05)
+		val result = ResponseParser.parse(data)
+		assertIs<Response.SignStartResponse>(result)
+		assertEquals(5, result.sessionId)
+	}
+
+	@Test
+	fun parse_signature() {
+		val data = byteArrayOf(0x14, 0x01, 0x02, 0x03, 0x04)
+		val result = ResponseParser.parse(data)
+		assertIs<Response.Signature>(result)
+		assertEquals(4, result.signatureData.size)
+	}
+
+	@Test
+	fun parse_customVars() {
+		val text = "key1=val1\nkey2=val2"
+		val textBytes = text.encodeToByteArray()
+		val data = ByteArray(1 + textBytes.size)
+		data[0] = 0x15
+		textBytes.copyInto(data, 1)
+		val result = ResponseParser.parse(data)
+		assertIs<Response.CustomVars>(result)
+		assertEquals(text, result.data)
+	}
+
+	@Test
+	fun parse_autoAddConfig_enabled() {
+		val data = byteArrayOf(0x19, 0x01)
+		val result = ResponseParser.parse(data)
+		assertIs<Response.AutoAddConfig>(result)
+		assertEquals(true, result.enabled)
+	}
+
+	@Test
+	fun parse_autoAddConfig_disabled() {
+		val data = byteArrayOf(0x19, 0x00)
+		val result = ResponseParser.parse(data)
+		assertIs<Response.AutoAddConfig>(result)
+		assertEquals(false, result.enabled)
+	}
+
+	@Test
+	fun parse_allowedRepeatFreq() {
+		val data = byteArrayOf(0x1A, 0x01, 0x02, 0x03)
+		val result = ResponseParser.parse(data)
+		assertIs<Response.AllowedRepeatFreq>(result)
+		assertEquals(3, result.frequencies.size)
+	}
+
+	@Test
+	fun parse_loginSuccess() {
+		val data = ByteArray(7)
+		data[0] = 0x85.toByte()
+		data[1] = 0xAA.toByte(); data[2] = 0xBB.toByte(); data[3] = 0xCC.toByte()
+		data[4] = 0xDD.toByte(); data[5] = 0xEE.toByte(); data[6] = 0xFF.toByte()
+		val result = ResponseParser.parse(data)
+		assertIs<Response.LoginSuccess>(result)
+		assertEquals("aabbccddeeff", result.publicKeyPrefix)
+	}
+
+	@Test
+	fun parse_loginFail() {
+		val data = ByteArray(7)
+		data[0] = 0x86.toByte()
+		data[1] = 0x01; data[2] = 0x02; data[3] = 0x03
+		data[4] = 0x04; data[5] = 0x05; data[6] = 0x06
+		val result = ResponseParser.parse(data)
+		assertIs<Response.LoginFail>(result)
+		assertEquals("010203040506", result.publicKeyPrefix)
+	}
+
+	@Test
+	fun parse_statusResponse() {
+		val data = ByteArray(10)
+		data[0] = 0x87.toByte()
+		for (i in 1..6) data[i] = i.toByte()
+		data[7] = 0xAA.toByte(); data[8] = 0xBB.toByte(); data[9] = 0xCC.toByte()
+		val result = ResponseParser.parse(data)
+		assertIs<Response.StatusResponse>(result)
+		assertEquals("010203040506", result.publicKeyPrefix)
+		assertEquals(3, result.statusData.size)
+	}
+
+	@Test
+	fun parse_traceData() {
+		val data = byteArrayOf(0x89.toByte(), 0x01, 0x02, 0x03)
+		val result = ResponseParser.parse(data)
+		assertIs<Response.TraceData>(result)
+		assertEquals(3, result.rawData.size)
+	}
+
+	@Test
+	fun parse_newAdvert() {
+		val data = byteArrayOf(0x8A.toByte(), 0x01, 0x02)
+		val result = ResponseParser.parse(data)
+		assertIs<Response.NewAdvert>(result)
+		assertEquals(2, result.rawData.size)
+	}
+
+	@Test
+	fun parse_telemetryResponse() {
+		val data = ByteArray(10)
+		data[0] = 0x8B.toByte()
+		for (i in 1..6) data[i] = i.toByte()
+		data[7] = 0xDE.toByte(); data[8] = 0xAD.toByte(); data[9] = 0xBE.toByte()
+		val result = ResponseParser.parse(data)
+		assertIs<Response.TelemetryResponse>(result)
+		assertEquals("010203040506", result.publicKeyPrefix)
+		assertEquals(3, result.telemetryData.size)
+	}
+
+	@Test
+	fun parse_pathDiscoveryResponse() {
+		val data = byteArrayOf(0x8D.toByte(), 0x01, 0x02)
+		val result = ResponseParser.parse(data)
+		assertIs<Response.PathDiscoveryResponse>(result)
+		assertEquals(2, result.rawData.size)
+	}
+
+	@Test
+	fun parse_controlData() {
+		val data = byteArrayOf(0x8E.toByte(), 0x05, 0x01, 0x02)
+		val result = ResponseParser.parse(data)
+		assertIs<Response.ControlData>(result)
+		assertEquals(5, result.type)
+		assertEquals(2, result.payload.size)
+	}
+
+	@Test
+	fun parse_contactDeleted() {
+		val data = ByteArray(7)
+		data[0] = 0x8F.toByte()
+		for (i in 1..6) data[i] = (i * 0x11).toByte()
+		val result = ResponseParser.parse(data)
+		assertIs<Response.ContactDeleted>(result)
+		assertEquals("112233445566", result.publicKeyPrefix)
+	}
+
 	// Helper to write uint32 LE for test data
 	private fun putUInt32LE(buffer: ByteArray, offset: Int, value: Long) {
 		buffer[offset] = (value and 0xFF).toByte()

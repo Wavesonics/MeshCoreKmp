@@ -51,6 +51,38 @@ class DeviceConnection internal constructor(
 		.filterIsInstance<Response.BinaryResponse>()
 		.map { ReceivedBinaryResponse(tag = it.tag, responseData = it.responseData) }
 
+	val loginResults: Flow<Pair<String, Boolean>> = commandQueue.pushEvents
+		.filter { it is Response.LoginSuccess || it is Response.LoginFail }
+		.map {
+			when (it) {
+				is Response.LoginSuccess -> it.publicKeyPrefix to true
+				is Response.LoginFail -> it.publicKeyPrefix to false
+				else -> error("unreachable")
+			}
+		}
+
+	val statusResponses: Flow<Response.StatusResponse> = commandQueue.pushEvents
+		.filterIsInstance<Response.StatusResponse>()
+
+	val traceData: Flow<Response.TraceData> = commandQueue.pushEvents
+		.filterIsInstance<Response.TraceData>()
+
+	val newAdverts: Flow<Response.NewAdvert> = commandQueue.pushEvents
+		.filterIsInstance<Response.NewAdvert>()
+
+	val telemetryResponses: Flow<Response.TelemetryResponse> = commandQueue.pushEvents
+		.filterIsInstance<Response.TelemetryResponse>()
+
+	val pathDiscoveryResponses: Flow<Response.PathDiscoveryResponse> = commandQueue.pushEvents
+		.filterIsInstance<Response.PathDiscoveryResponse>()
+
+	val controlData: Flow<Response.ControlData> = commandQueue.pushEvents
+		.filterIsInstance<Response.ControlData>()
+
+	val contactDeleted: Flow<String> = commandQueue.pushEvents
+		.filterIsInstance<Response.ContactDeleted>()
+		.map { it.publicKeyPrefix }
+
 	internal suspend fun initialize() {
 		// 1. APP_START — returns SelfInfo
 		val selfInfoResp = commandQueue.execute<Response.SelfInfo>(
@@ -251,7 +283,119 @@ class DeviceConnection internal constructor(
 		)
 	}
 
+	// --- Remote Command ---
+
+	suspend fun sendRemoteCommand(publicKeyPrefix: ByteArray, command: String): MessageSentConfirmation {
+		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+		val timestamp = currentTimeSeconds()
+		val resp = commandQueue.execute<Response>(
+			CommandSerializer.sendRemoteCommand(publicKeyPrefix, command, timestamp),
+			config.commandTimeout,
+		)
+		return when (resp) {
+			is Response.MessageSent -> MessageSentConfirmation(
+				messageType = resp.messageType,
+				expectedAck = resp.expectedAck,
+				suggestedTimeoutSeconds = resp.suggestedTimeoutSeconds,
+			)
+
+			is Response.Ok -> MessageSentConfirmation(
+				messageType = 0,
+				expectedAck = "",
+				suggestedTimeoutSeconds = 0,
+			)
+
+			else -> throw MeshCoreException.UnexpectedResponse(
+				"Expected MessageSent or Ok, got ${resp::class.simpleName}"
+			)
+		}
+	}
+
+	// --- Advertisement ---
+
+	suspend fun sendAdvert(flood: Boolean = false) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.sendAdvert(flood),
+			config.commandTimeout,
+		)
+	}
+
 	// --- Contacts ---
+
+	suspend fun addContact(publicKey: ByteArray, name: String, type: Int = 0, flags: Int = 0) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.addContact(publicKey, name, type, flags),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun updateContact(
+		publicKey: ByteArray,
+		name: String,
+		type: Int,
+		flags: Int,
+		outPath: ByteArray = ByteArray(64),
+	) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.updateContact(publicKey, name, type, flags, outPath),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun removeContact(publicKeyPrefix: ByteArray) {
+		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.removeContact(publicKeyPrefix),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun resetPath(publicKeyPrefix: ByteArray) {
+		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.resetPath(publicKeyPrefix),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun shareContact(publicKeyPrefix: ByteArray) {
+		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.shareContact(publicKeyPrefix),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun exportContact(publicKeyPrefix: ByteArray): String {
+		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+		val resp = commandQueue.execute<Response.ContactUri>(
+			CommandSerializer.exportContact(publicKeyPrefix),
+			config.commandTimeout,
+		)
+		return resp.uri
+	}
+
+	suspend fun importContact(cardData: ByteArray) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.importContact(cardData),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun setAutoAddConfig(enabled: Boolean) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.setAutoAddConfig(enabled),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun getAutoAddConfig(): Boolean {
+		val resp = commandQueue.execute<Response.AutoAddConfig>(
+			CommandSerializer.getAutoAddConfig(),
+			config.commandTimeout,
+		)
+		return resp.enabled
+	}
 
 	suspend fun getContacts(): List<Contact> {
 		val contactList = mutableListOf<Contact>()
@@ -334,6 +478,355 @@ class DeviceConnection internal constructor(
 				config.commandTimeout,
 			)
 		}
+	}
+
+	// --- Device Configuration ---
+
+	suspend fun setName(name: String) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.setName(name),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun setCoords(latitude: Double, longitude: Double) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.setCoords(latitude, longitude),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun setTxPower(power: Int) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.setTxPower(power),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun setDevicePin(pin: Int) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.setDevicePin(pin),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun setRadio(
+		frequency: Double,
+		bandwidth: Double,
+		spreadingFactor: Int,
+		codingRate: Int,
+		repeat: Int = 0,
+	) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.setRadio(frequency, bandwidth, spreadingFactor, codingRate, repeat),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun setTuning(rxDelay: Int, afFactor: Int) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.setTuning(rxDelay, afFactor),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun reboot() {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.reboot(),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun factoryReset() {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.factoryReset(),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun setOtherParams(
+		advertType: Int,
+		telemetryModeBase: Int = 0,
+		telemetryModeLoc: Int = 0,
+		telemetryModeEnv: Int = 0,
+	) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.setOtherParams(advertType, telemetryModeBase, telemetryModeLoc, telemetryModeEnv),
+			config.commandTimeout,
+		)
+	}
+
+	// --- Auth ---
+
+	suspend fun sendLogin(publicKeyPrefix: ByteArray, password: String): MessageSentConfirmation {
+		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+		val resp = commandQueue.execute<Response>(
+			CommandSerializer.sendLogin(publicKeyPrefix, password),
+			config.commandTimeout,
+		)
+		return when (resp) {
+			is Response.MessageSent -> MessageSentConfirmation(
+				messageType = resp.messageType,
+				expectedAck = resp.expectedAck,
+				suggestedTimeoutSeconds = resp.suggestedTimeoutSeconds,
+			)
+
+			is Response.Ok -> MessageSentConfirmation(
+				messageType = 0,
+				expectedAck = "",
+				suggestedTimeoutSeconds = 0,
+			)
+
+			else -> throw MeshCoreException.UnexpectedResponse(
+				"Expected MessageSent or Ok, got ${resp::class.simpleName}"
+			)
+		}
+	}
+
+	suspend fun sendLogout(publicKeyPrefix: ByteArray) {
+		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.sendLogout(publicKeyPrefix),
+			config.commandTimeout,
+		)
+	}
+
+	// --- Path Discovery ---
+
+	suspend fun sendPathDiscovery(publicKeyPrefix: ByteArray): MessageSentConfirmation {
+		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+		val resp = commandQueue.execute<Response>(
+			CommandSerializer.sendPathDiscovery(publicKeyPrefix),
+			config.commandTimeout,
+		)
+		return when (resp) {
+			is Response.MessageSent -> MessageSentConfirmation(
+				messageType = resp.messageType,
+				expectedAck = resp.expectedAck,
+				suggestedTimeoutSeconds = resp.suggestedTimeoutSeconds,
+			)
+
+			is Response.Ok -> MessageSentConfirmation(
+				messageType = 0,
+				expectedAck = "",
+				suggestedTimeoutSeconds = 0,
+			)
+
+			else -> throw MeshCoreException.UnexpectedResponse(
+				"Expected MessageSent or Ok, got ${resp::class.simpleName}"
+			)
+		}
+	}
+
+	suspend fun hasConnection(publicKeyPrefix: ByteArray): Boolean {
+		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+		val resp = commandQueue.execute<Response.Ok>(
+			CommandSerializer.hasConnection(publicKeyPrefix),
+			config.commandTimeout,
+		)
+		return (resp.value ?: 0) > 0
+	}
+
+	suspend fun sendTrace(auth: Int, tag: Int, flags: Int, path: ByteArray = ByteArray(0)): MessageSentConfirmation {
+		val resp = commandQueue.execute<Response>(
+			CommandSerializer.sendTrace(auth, tag, flags, path),
+			config.commandTimeout,
+		)
+		return when (resp) {
+			is Response.MessageSent -> MessageSentConfirmation(
+				messageType = resp.messageType,
+				expectedAck = resp.expectedAck,
+				suggestedTimeoutSeconds = resp.suggestedTimeoutSeconds,
+			)
+
+			is Response.Ok -> MessageSentConfirmation(
+				messageType = 0,
+				expectedAck = "",
+				suggestedTimeoutSeconds = 0,
+			)
+
+			else -> throw MeshCoreException.UnexpectedResponse(
+				"Expected MessageSent or Ok, got ${resp::class.simpleName}"
+			)
+		}
+	}
+
+	// --- Cryptography ---
+
+	suspend fun exportPrivateKey(): ByteArray {
+		val resp = commandQueue.execute<Response.PrivateKey>(
+			CommandSerializer.exportPrivateKey(),
+			config.commandTimeout,
+		)
+		return resp.key
+	}
+
+	suspend fun importPrivateKey(key: ByteArray) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.importPrivateKey(key),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun signStart(): Int {
+		val resp = commandQueue.execute<Response.SignStartResponse>(
+			CommandSerializer.signStart(),
+			config.commandTimeout,
+		)
+		return resp.sessionId
+	}
+
+	suspend fun signData(chunk: ByteArray) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.signData(chunk),
+			config.commandTimeout,
+		)
+	}
+
+	suspend fun signFinish(timeout: Int, size: Int): ByteArray {
+		val resp = commandQueue.execute<Response.Signature>(
+			CommandSerializer.signFinish(timeout, size),
+			config.commandTimeout,
+		)
+		return resp.signatureData
+	}
+
+	// --- Custom Variables ---
+
+	suspend fun getCustomVars(): String {
+		val resp = commandQueue.execute<Response.CustomVars>(
+			CommandSerializer.getCustomVars(),
+			config.commandTimeout,
+		)
+		return resp.data
+	}
+
+	suspend fun setCustomVar(key: String, value: String) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.setCustomVar(key, value),
+			config.commandTimeout,
+		)
+	}
+
+	// --- Telemetry ---
+
+	suspend fun getSelfTelemetry(): ByteArray {
+		val resp = commandQueue.execute<Response>(
+			CommandSerializer.getSelfTelemetry(),
+			config.commandTimeout,
+		)
+		return when (resp) {
+			is Response.Ok -> ByteArray(0)
+			else -> throw MeshCoreException.UnexpectedResponse(
+				"Expected Ok, got ${resp::class.simpleName}"
+			)
+		}
+	}
+
+	suspend fun sendTelemetryRequest(publicKeyPrefix: ByteArray): MessageSentConfirmation {
+		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+		val resp = commandQueue.execute<Response>(
+			CommandSerializer.sendTelemetryRequest(publicKeyPrefix),
+			config.commandTimeout,
+		)
+		return when (resp) {
+			is Response.MessageSent -> MessageSentConfirmation(
+				messageType = resp.messageType,
+				expectedAck = resp.expectedAck,
+				suggestedTimeoutSeconds = resp.suggestedTimeoutSeconds,
+			)
+
+			is Response.Ok -> MessageSentConfirmation(
+				messageType = 0,
+				expectedAck = "",
+				suggestedTimeoutSeconds = 0,
+			)
+
+			else -> throw MeshCoreException.UnexpectedResponse(
+				"Expected MessageSent or Ok, got ${resp::class.simpleName}"
+			)
+		}
+	}
+
+	suspend fun sendStatusRequest(publicKeyPrefix: ByteArray): MessageSentConfirmation {
+		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+		val resp = commandQueue.execute<Response>(
+			CommandSerializer.sendStatusRequest(publicKeyPrefix),
+			config.commandTimeout,
+		)
+		return when (resp) {
+			is Response.MessageSent -> MessageSentConfirmation(
+				messageType = resp.messageType,
+				expectedAck = resp.expectedAck,
+				suggestedTimeoutSeconds = resp.suggestedTimeoutSeconds,
+			)
+
+			is Response.Ok -> MessageSentConfirmation(
+				messageType = 0,
+				expectedAck = "",
+				suggestedTimeoutSeconds = 0,
+			)
+
+			else -> throw MeshCoreException.UnexpectedResponse(
+				"Expected MessageSent or Ok, got ${resp::class.simpleName}"
+			)
+		}
+	}
+
+	// --- Control Data ---
+
+	suspend fun sendControlData(type: Int, payload: ByteArray) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.sendControlData(type, payload),
+			config.commandTimeout,
+		)
+	}
+
+	// --- Anonymous Requests ---
+
+	suspend fun sendAnonymousRequest(
+		publicKey: ByteArray,
+		requestType: Int,
+		payload: ByteArray = ByteArray(0)
+	): MessageSentConfirmation {
+		val resp = commandQueue.execute<Response>(
+			CommandSerializer.sendAnonymousRequest(publicKey, requestType, payload),
+			config.commandTimeout,
+		)
+		return when (resp) {
+			is Response.MessageSent -> MessageSentConfirmation(
+				messageType = resp.messageType,
+				expectedAck = resp.expectedAck,
+				suggestedTimeoutSeconds = resp.suggestedTimeoutSeconds,
+			)
+
+			is Response.Ok -> MessageSentConfirmation(
+				messageType = 0,
+				expectedAck = "",
+				suggestedTimeoutSeconds = 0,
+			)
+
+			else -> throw MeshCoreException.UnexpectedResponse(
+				"Expected MessageSent or Ok, got ${resp::class.simpleName}"
+			)
+		}
+	}
+
+	// --- Config Queries ---
+
+	suspend fun getAllowedRepeatFreq(): ByteArray {
+		val resp = commandQueue.execute<Response.AllowedRepeatFreq>(
+			CommandSerializer.getAllowedRepeatFreq(),
+			config.commandTimeout,
+		)
+		return resp.frequencies
+	}
+
+	suspend fun setPathHashMode(mode: Int) {
+		commandQueue.execute<Response.Ok>(
+			CommandSerializer.setPathHashMode(mode),
+			config.commandTimeout,
+		)
 	}
 
 	// --- ACK waiting ---

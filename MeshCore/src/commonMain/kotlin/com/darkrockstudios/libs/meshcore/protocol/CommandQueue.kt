@@ -53,7 +53,16 @@ class CommandQueue(
 		is Response.RawDataReceived -> true
 		is Response.BinaryResponse -> true
 		is Response.LogData -> true
-		is Response.Unhandled -> true // all unhandled known codes are push events or ignorable
+		is Response.LoginSuccess -> true
+		is Response.LoginFail -> true
+		is Response.StatusResponse -> true
+		is Response.TraceData -> true
+		is Response.NewAdvert -> true
+		is Response.TelemetryResponse -> true
+		is Response.PathDiscoveryResponse -> true
+		is Response.ControlData -> true
+		is Response.ContactDeleted -> true
+		is Response.Unhandled -> true
 		else -> false
 	}
 

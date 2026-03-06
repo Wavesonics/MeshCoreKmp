@@ -25,6 +25,16 @@ object ResponseParser {
 			ResponseCode.PACKET_CURRENT_TIME -> parseCurrentTime(data)
 			ResponseCode.RESP_CODE_STATS -> parseStats(data)
 
+			// Solicited responses — newly parsed
+			ResponseCode.PACKET_CONTACT_URI -> parseContactUri(data)
+			ResponseCode.PACKET_PRIVATE_KEY -> parsePrivateKey(data)
+			ResponseCode.PACKET_DISABLED -> Response.Disabled
+			ResponseCode.PACKET_SIGN_START -> parseSignStart(data)
+			ResponseCode.PACKET_SIGNATURE -> parseSignature(data)
+			ResponseCode.PACKET_CUSTOM_VARS -> parseCustomVars(data)
+			ResponseCode.PACKET_AUTOADD_CONFIG -> parseAutoAddConfig(data)
+			ResponseCode.PACKET_ALLOWED_REPEAT_FREQ -> parseAllowedRepeatFreq(data)
+
 			// Push events — fully parsed
 			ResponseCode.PUSH_CODE_ADVERTISEMENT -> parseAdvertisement(data)
 			ResponseCode.PUSH_CODE_ACK -> parseAck(data)
@@ -32,6 +42,23 @@ object ResponseParser {
 			ResponseCode.PUSH_CODE_RAW_DATA -> parseRawData(data)
 			ResponseCode.PUSH_CODE_LOG_DATA -> Response.LogData(data.copyOfRange(1, data.size))
 			ResponseCode.PUSH_CODE_BINARY_RESPONSE -> parseBinaryResponse(data)
+
+			// Push events — newly parsed
+			ResponseCode.PUSH_CODE_LOGIN_SUCCESS -> parseLoginResult(data, success = true)
+			ResponseCode.PUSH_CODE_LOGIN_FAIL -> parseLoginResult(data, success = false)
+			ResponseCode.PUSH_CODE_STATUS_RESPONSE -> parseStatusResponse(data)
+			ResponseCode.PUSH_CODE_TRACE_DATA -> Response.TraceData(data.copyOfRange(1, data.size))
+			ResponseCode.PUSH_CODE_NEW_ADVERT -> Response.NewAdvert(data.copyOfRange(1, data.size))
+			ResponseCode.PUSH_CODE_TELEMETRY_RESPONSE -> parseTelemetryResponse(data)
+			ResponseCode.PUSH_CODE_PATH_DISCOVERY_RESPONSE -> Response.PathDiscoveryResponse(
+				data.copyOfRange(
+					1,
+					data.size
+				)
+			)
+
+			ResponseCode.PUSH_CODE_CONTROL_DATA -> parseControlData(data)
+			ResponseCode.PUSH_CODE_CONTACT_DELETED -> parseContactDeleted(data)
 
 			else -> Response.Unhandled(code, data.copyOfRange(1, data.size))
 		}
@@ -347,6 +374,69 @@ object ResponseParser {
 		val tag = getUInt32LE(data, 2)
 		val responseData = if (data.size > 6) data.copyOfRange(6, data.size) else ByteArray(0)
 		return Response.BinaryResponse(tag = tag, responseData = responseData)
+	}
+
+	// --- New response parsers ---
+
+	private fun parseContactUri(data: ByteArray): Response.ContactUri {
+		val uri = if (data.size > 1) extractNullTerminatedString(data, 1) else ""
+		return Response.ContactUri(uri)
+	}
+
+	private fun parsePrivateKey(data: ByteArray): Response.PrivateKey? {
+		if (data.size < 33) return null
+		return Response.PrivateKey(data.copyOfRange(1, 33))
+	}
+
+	private fun parseSignStart(data: ByteArray): Response.SignStartResponse {
+		val sessionId = if (data.size >= 2) data[1].toInt() and 0xFF else 0
+		return Response.SignStartResponse(sessionId)
+	}
+
+	private fun parseSignature(data: ByteArray): Response.Signature {
+		return Response.Signature(if (data.size > 1) data.copyOfRange(1, data.size) else ByteArray(0))
+	}
+
+	private fun parseCustomVars(data: ByteArray): Response.CustomVars {
+		val text = if (data.size > 1) data.decodeToString(1, data.size) else ""
+		return Response.CustomVars(text)
+	}
+
+	private fun parseAutoAddConfig(data: ByteArray): Response.AutoAddConfig {
+		val enabled = data.size >= 2 && (data[1].toInt() and 0xFF) > 0
+		return Response.AutoAddConfig(enabled)
+	}
+
+	private fun parseAllowedRepeatFreq(data: ByteArray): Response.AllowedRepeatFreq {
+		return Response.AllowedRepeatFreq(if (data.size > 1) data.copyOfRange(1, data.size) else ByteArray(0))
+	}
+
+	private fun parseLoginResult(data: ByteArray, success: Boolean): Response {
+		val prefix = if (data.size >= 7) data.copyOfRange(1, 7).toHexString() else ""
+		return if (success) Response.LoginSuccess(prefix) else Response.LoginFail(prefix)
+	}
+
+	private fun parseStatusResponse(data: ByteArray): Response.StatusResponse {
+		val prefix = if (data.size >= 7) data.copyOfRange(1, 7).toHexString() else ""
+		val statusData = if (data.size > 7) data.copyOfRange(7, data.size) else ByteArray(0)
+		return Response.StatusResponse(prefix, statusData)
+	}
+
+	private fun parseTelemetryResponse(data: ByteArray): Response.TelemetryResponse {
+		val prefix = if (data.size >= 7) data.copyOfRange(1, 7).toHexString() else ""
+		val telemetryData = if (data.size > 7) data.copyOfRange(7, data.size) else ByteArray(0)
+		return Response.TelemetryResponse(prefix, telemetryData)
+	}
+
+	private fun parseControlData(data: ByteArray): Response.ControlData {
+		val type = if (data.size >= 2) data[1].toInt() and 0xFF else 0
+		val payload = if (data.size > 2) data.copyOfRange(2, data.size) else ByteArray(0)
+		return Response.ControlData(type, payload)
+	}
+
+	private fun parseContactDeleted(data: ByteArray): Response.ContactDeleted {
+		val prefix = if (data.size >= 7) data.copyOfRange(1, 7).toHexString() else ""
+		return Response.ContactDeleted(prefix)
 	}
 
 	// --- Byte utilities ---
