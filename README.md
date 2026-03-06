@@ -21,7 +21,7 @@ Provides high-level, ergonomic access to to send and receive data via Bluetooth 
 
 Add the dependency to your `build.gradle` file:
 ```kts
-implementation("com.darkrockstudios:meshcore:0.9.3")
+implementation("com.darkrockstudios:meshcore:0.12.0")
 ```
 
 Create a `BlueFalconBleAdapter` with a platform-specific `BlueFalcon` instance, then pass it to `DeviceScanner`:
@@ -86,17 +86,51 @@ connection.connectionState.collect { state ->
 
 ### Sending Messages
 
-```kotlin                                                                                                                                                                                                                                                                                                                   
-// Send a message on a channel                                                                                                                                                                                                                                                                                              
-val confirmation = connection.sendChannelMessage(                                                                                                                                                                                                                                                                           
-    channelIndex = 0,                                                                                                                                                                                                                                                                                                       
-    text = "Hello mesh network!",                                                                                                                                                                                                                                                                                           
-)                                                                                                                                                                                                                                                                                                                           
-println("Sent! Ack expected: ${confirmation.expectedAck}")                                                                                                                                                                                                                                                                  
-                                                                                                                                                                                                                                                                                                                            
-// Wait for the acknowledgment                                                                                                                                                                                                                                                                                              
-connection.acks.first { it == confirmation.expectedAck }                                                                                                                                                                                                                                                                    
-println("Message acknowledged!")                                                                                                                                                                                                                                                                                            
+```kotlin
+// Send a message on a channel
+val confirmation = connection.sendChannelMessage(
+	channelIndex = 0,
+	text = "Hello mesh network!",
+)
+println("Sent! Ack expected: ${confirmation.expectedAck}")
+
+// Wait for the acknowledgment
+connection.acks.first { it == confirmation.expectedAck }
+println("Message acknowledged!")
+```
+
+#### Direct Messages
+
+```kotlin
+// Send a direct message to a contact by their 6-byte public key prefix
+val confirmation = connection.sendDirectMessage(
+	publicKeyPrefix = contactKeyPrefix,
+	text = "Hello!",
+)
+println("Sent! Ack expected: ${confirmation.expectedAck}")
+```
+
+#### Send and Await Acknowledgment
+
+Use `sendAndAwaitAck` to send a message and suspend until the ack is received (or timeout):
+
+```kotlin
+// Sends the message and waits for the ack in one call
+val confirmation = connection.sendAndAwaitAck {
+	sendDirectMessage(
+		publicKeyPrefix = contactKeyPrefix,
+		text = "Hello!",
+	)
+}
+println("Message acknowledged! Ack: ${confirmation.expectedAck}")
+```
+
+This works with any message-sending method that returns a `MessageSentConfirmation`:
+
+```kotlin
+connection.sendAndAwaitAck {
+	sendChannelMessage(channelIndex = 0, text = "Hello mesh network!")
+}
 ```                                                                                                                                                                                                                                                                                                                         
 
 ### Receiving Messages
