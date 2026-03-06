@@ -1,7 +1,7 @@
 [versions]
 
 kotlin = "2.3.10"
-agp = "8.11.2"
+agp = "8.12.0"
 maven-publish = "0.34.0"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.10.0"

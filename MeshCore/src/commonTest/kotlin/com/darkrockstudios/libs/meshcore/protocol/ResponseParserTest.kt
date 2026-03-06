@@ -698,6 +698,27 @@ class ResponseParserTest {
 		assertEquals("112233445566", result.publicKeyPrefix)
 	}
 
+	@Test
+	fun parse_messageSent_zeroAck_normalizesToEmpty() {
+		val data = ByteArray(10)
+		data[0] = 0x06
+		data[1] = 0x01 // message type
+		// Zero ACK bytes (channel messages have no ack)
+		data[2] = 0x00
+		data[3] = 0x00
+		data[4] = 0x00
+		data[5] = 0x00
+		// Timeout = 0
+		data[6] = 0x00
+		data[7] = 0x00
+		data[8] = 0x00
+		data[9] = 0x00
+
+		val result = ResponseParser.parse(data)
+		assertIs<Response.MessageSent>(result)
+		assertEquals("", result.expectedAck)
+	}
+
 	// Helper to write uint32 LE for test data
 	private fun putUInt32LE(buffer: ByteArray, offset: Int, value: Long) {
 		buffer[offset] = (value and 0xFF).toByte()

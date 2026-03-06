@@ -844,7 +844,7 @@ class DeviceConnection internal constructor(
 
 	suspend fun sendAndAwaitAck(
 		block: suspend DeviceConnection.() -> MessageSentConfirmation,
-	): MessageSentConfirmation {
+	): Result<MessageSentConfirmation> {
 		// Buffer acks before sending so we don't miss fast responses
 		val receivedAcks = mutableSetOf<String>()
 		val collectorJob = scope.launch {
@@ -856,10 +856,10 @@ class DeviceConnection internal constructor(
 		try {
 			val confirmation = block()
 
-			if (confirmation.expectedAck.isEmpty()) return confirmation
+			if (confirmation.expectedAck.isEmpty()) return Result.success(confirmation)
 
 			// Check if ack already arrived while sending
-			if (confirmation.expectedAck in receivedAcks) return confirmation
+			if (confirmation.expectedAck in receivedAcks) return Result.success(confirmation)
 
 			val timeoutMs = if (confirmation.suggestedTimeoutSeconds > 0) {
 				confirmation.suggestedTimeoutSeconds * 1000L
@@ -874,13 +874,13 @@ class DeviceConnection internal constructor(
 					.first { it.ackCode == confirmation.expectedAck }
 			}
 
-			if (matched == null && confirmation.expectedAck !in receivedAcks) {
-				throw MeshCoreException.AckTimeout(
-					"ACK not received within ${timeoutMs}ms"
+			return if (matched != null || confirmation.expectedAck in receivedAcks) {
+				Result.success(confirmation)
+			} else {
+				Result.failure(
+					MeshCoreException.AckTimeout("ACK not received within ${timeoutMs}ms")
 				)
 			}
-
-			return confirmation
 		} finally {
 			collectorJob.cancel()
 		}

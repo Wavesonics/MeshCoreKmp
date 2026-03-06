@@ -211,7 +211,8 @@ object ResponseParser {
 	private fun parseMessageSent(data: ByteArray): Response.MessageSent? {
 		if (data.size < 10) return null
 		val msgType = data[1].toInt() and 0xFF
-		val expectedAck = data.copyOfRange(2, 6).toHexString()
+		val ackBytes = data.copyOfRange(2, 6)
+		val expectedAck = if (ackBytes.all { it == 0.toByte() }) "" else ackBytes.toHexString()
 		val suggestedTimeout = getUInt32LE(data, 6).toInt()
 		return Response.MessageSent(
 			messageType = msgType,

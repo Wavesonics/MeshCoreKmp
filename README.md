@@ -112,25 +112,31 @@ println("Sent! Ack expected: ${confirmation.expectedAck}")
 
 #### Send and Await Acknowledgment
 
-Use `sendAndAwaitAck` to send a message and suspend until the ack is received (or timeout):
+Use `sendAndAwaitAck` to send a message and suspend until the ack is received (or timeout).
+Returns a `Result<MessageSentConfirmation>` so you can handle timeouts without exceptions:
 
 ```kotlin
 // Sends the message and waits for the ack in one call
-val confirmation = connection.sendAndAwaitAck {
+connection.sendAndAwaitAck {
 	sendDirectMessage(
 		publicKeyPrefix = contactKeyPrefix,
 		text = "Hello!",
 	)
+}.onSuccess { confirmation ->
+	println("Message acknowledged! Ack: ${confirmation.expectedAck}")
+}.onFailure { error ->
+	println("Ack timed out: ${error.message}")
 }
-println("Message acknowledged! Ack: ${confirmation.expectedAck}")
 ```
 
 This works with any message-sending method that returns a `MessageSentConfirmation`:
 
 ```kotlin
-connection.sendAndAwaitAck {
-	sendChannelMessage(channelIndex = 0, text = "Hello mesh network!")
+val result = connection.sendAndAwaitAck {
+	sendDirectMessage(publicKey = contactKey, text = "Hello!")
 }
+val confirmation = result.getOrNull() ?: return // handle timeout
+// Note: Channel messages are broadcast and don't receive acks.
 ```                                                                                                                                                                                                                                                                                                                         
 
 ### Receiving Messages
