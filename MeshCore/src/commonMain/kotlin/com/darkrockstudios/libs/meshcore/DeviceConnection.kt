@@ -891,7 +891,6 @@ class DeviceConnection internal constructor(
 	private fun Response.Contact.toDomainModel(): Contact {
 		return Contact(
 			publicKey = publicKey,
-			publicKeyPrefix = publicKey.toHexString().take(12),
 			name = name,
 			type = type,
 			flags = flags,

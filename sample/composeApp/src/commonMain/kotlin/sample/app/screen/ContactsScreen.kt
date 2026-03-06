@@ -106,7 +106,7 @@ fun ContactsScreen(
 				modifier = Modifier.fillMaxSize(),
 				verticalArrangement = Arrangement.spacedBy(8.dp),
 			) {
-				items(filteredContacts, key = { it.publicKeyPrefix }) { contact ->
+				items(filteredContacts, key = { it.publicKeyPrefixHex() }) { contact ->
 					ContactCard(
 						contact = contact,
 						onClick = { onContactSelected(contact) },
@@ -140,7 +140,7 @@ private fun ContactCard(
 					style = MaterialTheme.typography.titleMedium,
 				)
 				Text(
-					text = contact.publicKeyPrefix,
+					text = contact.publicKeyPrefixHex(),
 					style = MaterialTheme.typography.bodySmall,
 					color = MaterialTheme.colorScheme.onSurfaceVariant,
 				)

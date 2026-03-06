@@ -1,11 +1,11 @@
 package com.darkrockstudios.libs.meshcore.model
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 @Serializable
 data class Contact(
 	val publicKey: ByteArray,
-	val publicKeyPrefix: String,
 	val name: String,
 	val type: Int = 0,
 	val flags: Int = 0,
@@ -14,6 +14,11 @@ data class Contact(
 	val gpsLongitude: Double? = null,
 	val lastmod: Long = 0,
 ) {
+	@Transient
+	val publicKeyPrefix: ByteArray = publicKey.copyOfRange(0, 6)
+
+	fun publicKeyPrefixHex(): String = publicKeyPrefix.toHexString()
+
 	override fun equals(other: Any?): Boolean {
 		if (this === other) return true
 		if (other == null || this::class != other::class) return false
@@ -27,7 +32,6 @@ data class Contact(
 		if (gpsLongitude != other.gpsLongitude) return false
 		if (lastmod != other.lastmod) return false
 		if (!publicKey.contentEquals(other.publicKey)) return false
-		if (publicKeyPrefix != other.publicKeyPrefix) return false
 		if (name != other.name) return false
 
 		return true
@@ -41,7 +45,6 @@ data class Contact(
 		result = 31 * result + (gpsLongitude?.hashCode() ?: 0)
 		result = 31 * result + lastmod.hashCode()
 		result = 31 * result + publicKey.contentHashCode()
-		result = 31 * result + publicKeyPrefix.hashCode()
 		result = 31 * result + name.hashCode()
 		return result
 	}
