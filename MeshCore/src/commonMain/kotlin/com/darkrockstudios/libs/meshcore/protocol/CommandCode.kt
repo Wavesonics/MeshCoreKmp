@@ -2,6 +2,7 @@ package com.darkrockstudios.libs.meshcore.protocol
 
 object CommandCode {
 	const val APP_START = 0x01
+	const val SEND_TXT_MSG = 0x02
 	const val SEND_CHANNEL_MESSAGE = 0x03
 	const val GET_MESSAGE = 0x0A
 	const val GET_BATTERY = 0x14

@@ -688,7 +688,7 @@ Bytes 6-9: Suggested Timeout (32-bit little-endian, seconds)
 **PACKET_ACK** (0x82):
 ```
 Byte 0: 0x82
-Bytes 1-6: ACK Code (6 bytes, hex)
+Bytes 1-4: ACK Code (4 bytes, hex)
 ```
 
 ### Error Codes

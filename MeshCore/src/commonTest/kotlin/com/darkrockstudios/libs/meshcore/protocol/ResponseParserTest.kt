@@ -295,10 +295,10 @@ class ResponseParserTest {
 
 	@Test
 	fun parse_ack() {
-		val data = byteArrayOf(0x82.toByte(), 0x01, 0x02, 0x03, 0x04, 0x05, 0x06)
+		val data = byteArrayOf(0x82.toByte(), 0x01, 0x02, 0x03, 0x04)
 		val result = ResponseParser.parse(data)
 		assertIs<Response.Ack>(result)
-		assertEquals("010203040506", result.ackCode)
+		assertEquals("01020304", result.ackCode)
 	}
 
 	@Test

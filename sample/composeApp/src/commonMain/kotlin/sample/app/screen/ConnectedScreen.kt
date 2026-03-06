@@ -8,7 +8,6 @@ import androidx.compose.ui.unit.dp
 import com.darkrockstudios.libs.meshcore.DeviceConnection
 import com.darkrockstudios.libs.meshcore.ble.ConnectionState
 import com.darkrockstudios.libs.meshcore.model.BatteryInfo
-import com.darkrockstudios.libs.meshcore.model.Contact
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -17,6 +16,7 @@ fun ConnectedScreen(
 	connection: DeviceConnection,
 	onDisconnected: () -> Unit,
 	onChannelsClick: () -> Unit,
+	onContactsClick: () -> Unit,
 ) {
 	val scope = rememberCoroutineScope()
 	val connectionState by connection.connectionState.collectAsState()
@@ -24,12 +24,6 @@ fun ConnectedScreen(
 	var batteryInfo by remember { mutableStateOf<BatteryInfo?>(null) }
 	var batteryError by remember { mutableStateOf<String?>(null) }
 	var isFetchingBattery by remember { mutableStateOf(false) }
-
-	var contacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
-	var isFetchingContacts by remember { mutableStateOf(false) }
-	var contactsError by remember { mutableStateOf<String?>(null) }
-	var expanded by remember { mutableStateOf(false) }
-	var selectedContact by remember { mutableStateOf<Contact?>(null) }
 
 	// Watch for unexpected disconnection
 	LaunchedEffect(connectionState) {
@@ -110,72 +104,10 @@ fun ConnectedScreen(
 
 			// Contacts Button
 			Button(
-				onClick = {
-					isFetchingContacts = true
-					contactsError = null
-					scope.launch {
-						try {
-							contacts = connection.getContacts()
-						} catch (e: Exception) {
-							contactsError = "Failed: ${e.message}"
-						} finally {
-							isFetchingContacts = false
-						}
-					}
-				},
-				enabled = !isFetchingContacts,
+				onClick = onContactsClick,
 				modifier = Modifier.fillMaxWidth(),
 			) {
-				Text(if (isFetchingContacts) "Fetching Contacts..." else "Get Contacts")
-			}
-
-			if (contactsError != null) {
-				Text(
-					text = contactsError!!,
-					color = MaterialTheme.colorScheme.error,
-				)
-			}
-
-			if (contacts.isNotEmpty()) {
-				ExposedDropdownMenuBox(
-					expanded = expanded,
-					onExpandedChange = { expanded = !expanded },
-					modifier = Modifier.fillMaxWidth()
-				) {
-					OutlinedTextField(
-						value = selectedContact?.name ?: "Select Contact",
-						onValueChange = {},
-						readOnly = true,
-						label = { Text("Direct Contacts") },
-						trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-						colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-						modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true)
-							.fillMaxWidth()
-					)
-
-					ExposedDropdownMenu(
-						expanded = expanded,
-						onDismissRequest = { expanded = false }
-					) {
-						contacts.forEach { contact ->
-							DropdownMenuItem(
-								text = {
-									Column {
-										Text(contact.name)
-										Text(
-											contact.publicKeyPrefix,
-											style = MaterialTheme.typography.labelSmall
-										)
-									}
-								},
-								onClick = {
-									selectedContact = contact
-									expanded = false
-								}
-							)
-						}
-					}
-				}
+				Text("Contacts")
 			}
 
 			if (batteryError != null) {

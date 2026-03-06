@@ -17,3 +17,9 @@ data object ChannelsRoute : Route
 
 @Serializable
 data class ChannelRoute(val channelIndex: Int, val channelName: String) : Route
+
+@Serializable
+data object ContactsRoute : Route
+
+@Serializable
+data class DirectMessageRoute(val contactName: String, val publicKeyHex: String) : Route

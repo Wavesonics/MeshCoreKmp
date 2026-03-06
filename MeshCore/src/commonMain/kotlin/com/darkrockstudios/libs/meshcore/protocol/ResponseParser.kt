@@ -272,8 +272,8 @@ object ResponseParser {
 	}
 
 	private fun parseAck(data: ByteArray): Response.Ack? {
-		if (data.size < 7) return null
-		val ackCode = data.copyOfRange(1, 7).toHexString()
+		if (data.size < 5) return null
+		val ackCode = data.copyOfRange(1, 5).toHexString()
 		return Response.Ack(ackCode)
 	}
 

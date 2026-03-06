@@ -9,6 +9,7 @@ import com.darkrockstudios.libs.meshcore.protocol.Response
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class DeviceConnection internal constructor(
 	private val bleConnection: BleConnection,
@@ -158,6 +159,32 @@ class DeviceConnection internal constructor(
 
 	// --- Messaging ---
 
+	suspend fun sendDirectMessage(publicKeyPrefix: ByteArray, text: String): MessageSentConfirmation {
+		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+		val timestamp = currentTimeSeconds()
+		val resp = commandQueue.execute<Response>(
+			CommandSerializer.sendDirectMessage(publicKeyPrefix, text, timestamp),
+			config.commandTimeout,
+		)
+		return when (resp) {
+			is Response.MessageSent -> MessageSentConfirmation(
+				messageType = resp.messageType,
+				expectedAck = resp.expectedAck,
+				suggestedTimeoutSeconds = resp.suggestedTimeoutSeconds,
+			)
+
+			is Response.Ok -> MessageSentConfirmation(
+				messageType = 0,
+				expectedAck = "",
+				suggestedTimeoutSeconds = 0,
+			)
+
+			else -> throw MeshCoreException.UnexpectedResponse(
+				"Expected MessageSent or Ok, got ${resp::class.simpleName}"
+			)
+		}
+	}
+
 	suspend fun sendChannelMessage(channelIndex: Int, text: String): MessageSentConfirmation {
 		val timestamp = currentTimeSeconds()
 		val resp = commandQueue.execute<Response>(
@@ -306,6 +333,52 @@ class DeviceConnection internal constructor(
 				CommandSerializer.setDeviceTime(now),
 				config.commandTimeout,
 			)
+		}
+	}
+
+	// --- ACK waiting ---
+
+	suspend fun sendAndAwaitAck(
+		block: suspend DeviceConnection.() -> MessageSentConfirmation,
+	): MessageSentConfirmation {
+		// Buffer acks before sending so we don't miss fast responses
+		val receivedAcks = mutableSetOf<String>()
+		val collectorJob = scope.launch {
+			commandQueue.pushEvents
+				.filterIsInstance<Response.Ack>()
+				.collect { receivedAcks.add(it.ackCode) }
+		}
+
+		try {
+			val confirmation = block()
+
+			if (confirmation.expectedAck.isEmpty()) return confirmation
+
+			// Check if ack already arrived while sending
+			if (confirmation.expectedAck in receivedAcks) return confirmation
+
+			val timeoutMs = if (confirmation.suggestedTimeoutSeconds > 0) {
+				confirmation.suggestedTimeoutSeconds * 1000L
+			} else {
+				config.commandTimeout.inWholeMilliseconds
+			}
+
+			// Wait for matching ack, re-checking the buffer on each emission
+			val matched = withTimeoutOrNull(timeoutMs) {
+				commandQueue.pushEvents
+					.filterIsInstance<Response.Ack>()
+					.first { it.ackCode == confirmation.expectedAck }
+			}
+
+			if (matched == null && confirmation.expectedAck !in receivedAcks) {
+				throw MeshCoreException.AckTimeout(
+					"ACK not received within ${timeoutMs}ms"
+				)
+			}
+
+			return confirmation
+		} finally {
+			collectorJob.cancel()
 		}
 	}
 

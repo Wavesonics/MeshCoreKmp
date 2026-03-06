@@ -38,6 +38,24 @@ object CommandSerializer {
 	fun deleteChannel(index: Int): ByteArray =
 		setChannel(index, "", ByteArray(32))
 
+	fun sendDirectMessage(
+		publicKeyPrefix: ByteArray,
+		text: String,
+		timestampSeconds: Long,
+		attempt: Int = 0
+	): ByteArray {
+		require(publicKeyPrefix.size == 6) { "Public key prefix must be 6 bytes" }
+		val textBytes = text.encodeToByteArray()
+		val buffer = ByteArray(7 + 6 + textBytes.size)
+		buffer[0] = CommandCode.SEND_TXT_MSG.toByte()
+		buffer[1] = 0x00 // subcode: text
+		buffer[2] = attempt.toByte()
+		putUInt32LE(buffer, 3, timestampSeconds)
+		publicKeyPrefix.copyInto(buffer, 7)
+		textBytes.copyInto(buffer, 13)
+		return buffer
+	}
+
 	fun sendChannelMessage(channelIndex: Int, text: String, timestampSeconds: Long): ByteArray {
 		require(channelIndex in 0..7) { "Channel index must be 0-7" }
 		val textBytes = text.encodeToByteArray()

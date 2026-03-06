@@ -20,4 +20,7 @@ sealed class MeshCoreException(message: String, cause: Throwable? = null) : Exce
 
 	class UnexpectedResponse(message: String) :
 		MeshCoreException(message)
+
+	class AckTimeout(message: String) :
+		MeshCoreException(message)
 }

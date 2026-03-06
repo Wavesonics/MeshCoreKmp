@@ -1,29 +1,16 @@
 package sample.app
 
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.compose.runtime.toMutableStateList
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.darkrockstudios.libs.meshcore.DeviceConnection
 import com.darkrockstudios.libs.meshcore.DeviceScanner
 import com.darkrockstudios.libs.meshcore.ble.BleAdapter
 import kotlinx.coroutines.launch
-import sample.app.navigation.ChannelRoute
-import sample.app.navigation.ChannelsRoute
-import sample.app.navigation.ConnectedRoute
-import sample.app.navigation.Route
-import sample.app.navigation.ScanRoute
-import sample.app.screen.ChannelScreen
-import sample.app.screen.ChannelsScreen
-import sample.app.screen.ConnectedScreen
-import sample.app.screen.ScanScreen
+import sample.app.navigation.*
+import sample.app.screen.*
 
 @Composable
 fun App(bleAdapter: BleAdapter) {
@@ -66,6 +53,9 @@ fun App(bleAdapter: BleAdapter) {
 							},
 							onChannelsClick = {
 								backStack.add(ChannelsRoute)
+							},
+							onContactsClick = {
+								backStack.add(ContactsRoute)
 							}
 						)
 					}
@@ -86,6 +76,32 @@ fun App(bleAdapter: BleAdapter) {
 						ChannelScreen(
 							channelIndex = route.channelIndex,
 							channelName = route.channelName,
+							connection = conn,
+							onBack = { backStack.removeLastOrNull() },
+						)
+					}
+				}
+				entry<ContactsRoute> {
+					activeConnection?.let { conn ->
+						ContactsScreen(
+							connection = conn,
+							onBack = { backStack.removeLastOrNull() },
+							onContactSelected = { contact ->
+								backStack.add(
+									DirectMessageRoute(
+										contactName = contact.name,
+										publicKeyHex = contact.publicKey.toHexString(),
+									)
+								)
+							}
+						)
+					}
+				}
+				entry<DirectMessageRoute> { route ->
+					activeConnection?.let { conn ->
+						DirectMessageScreen(
+							contactName = route.contactName,
+							publicKeyHex = route.publicKeyHex,
 							connection = conn,
 							onBack = { backStack.removeLastOrNull() },
 						)
